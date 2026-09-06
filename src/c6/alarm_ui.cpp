@@ -3,6 +3,13 @@
 #include "../screen.h"
 #include "audio.h"
 #include "canvas.h"
+#include "amoled.h"
+#include "supervisor.h"
+
+// Freeze diagnostics, defined at global scope in main.cpp - see the note
+// there. Declared out here because an extern inside the namespace below
+// would name alarm_ui::diagLoops, which is a different thing entirely.
+extern volatile uint32_t diagLoops, diagFrames, diagLastFrameMs, diagWx;
 #include <math.h>
 
 namespace alarm_ui {
@@ -130,6 +137,40 @@ static void paintList(GfxDirect &g)
         g.setTextDatum(TC_DATUM);
         g.setTextColor(C_RING, C_BG);
         g.drawString(audio::status(), CX, 38, 1);
+    } else {
+        // Freeze diagnostics - see the note in main.cpp. This is the one
+        // screen reachable while the display is stuck, so it is where the
+        // counters have to be.
+        char d[48];
+        snprintf(d, sizeof d, "L%lu F%lu S%lu D%lu W%lu",
+                 (unsigned long)(diagLoops / 1000),
+                 (unsigned long)diagFrames,
+                 (unsigned long)((millis() - diagLastFrameMs) / 1000),
+                 (unsigned long)amoled::dmaTimeouts(),
+                 (unsigned long)diagWx);
+        g.setTextDatum(TC_DATUM);
+        g.setTextColor(C_DIM, C_BG);
+        g.drawString(d, CX, 34, 1);
+
+        // Heap now and the lowest it has ever been. A clock that dies after
+        // hours is most often one that is leaking, and a falling floor here
+        // says so long before it actually fails - no need to wait for it.
+        snprintf(d, sizeof d, "heap %lu min %lu  up %lum",
+                 (unsigned long)(ESP.getFreeHeap() / 1024),
+                 (unsigned long)(ESP.getMinFreeHeap() / 1024),
+                 (unsigned long)(millis() / 60000));
+        g.drawString(d, CX, 44, 1);
+
+        // If the supervisor had to restart us, this is where it says so.
+        // The counters above only describe the run they are in; this is the
+        // one line that carries anything across a freeze, which is the whole
+        // difficulty with a fault that takes the display with it.
+        if (const char *r1 = supervisor::report1()) {
+            g.setTextColor(C_RING, C_BG);
+            g.drawString(r1, CX, 54, 1);
+            if (const char *r2 = supervisor::report2())
+                g.drawString(r2, CX, 64, 1);
+        }
     }
 
     if (alarms.count == 0) {

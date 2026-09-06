@@ -51,7 +51,11 @@ void poll()
 
     uint8_t b[6];
     {
-        i2cbus::Hold h;
+        // A missed sample just leaves the rotation where it was until the
+        // next poll 150 ms later, which nobody can see. Waiting on a busy
+        // bus would stall the frame instead, which everybody can.
+        i2cbus::Hold h(i2cbus::WAIT_RENDER);
+        if (!h.ok()) return;
         Wire.beginTransmission(addr);
         Wire.write(REG_AX_L);
         if (Wire.endTransmission(false) != 0) return;

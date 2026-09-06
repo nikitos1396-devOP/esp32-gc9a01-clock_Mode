@@ -43,6 +43,7 @@ time_t readUTC()
     uint8_t b[7];
     {
         i2cbus::Hold h;
+        if (!h.ok()) return 0;
         Wire.beginTransmission(ADDR);
         Wire.write(REG_SECONDS);
         if (Wire.endTransmission(false) != 0) return 0;
@@ -89,7 +90,10 @@ bool writeUTC(time_t when)
     struct tm t;
     gmtime_r(&when, &t);
 
-    i2cbus::Hold h;
+    // Skipping an hourly sync costs a little drift on the next cold boot;
+    // blocking the loop to make it costs the clock.
+    i2cbus::Hold h(i2cbus::WAIT_RENDER);
+    if (!h.ok()) return false;
     Wire.beginTransmission(ADDR);
     Wire.write(REG_SECONDS);
     Wire.write(bin2bcd((uint8_t)t.tm_sec));     // writing clears the OS flag

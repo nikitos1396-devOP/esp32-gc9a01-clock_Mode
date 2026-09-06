@@ -23,6 +23,7 @@ static esp_lcd_panel_io_handle_t io    = nullptr;
 static esp_lcd_panel_handle_t    panel = nullptr;
 static SemaphoreHandle_t         done  = nullptr;
 static volatile bool             pending = false;
+static volatile uint32_t         timeouts = 0;
 
 // Waveshare's init sequence for this panel.
 static const sh8601_lcd_init_cmd_t INIT_CMDS[] = {
@@ -108,11 +109,14 @@ void waitIdle()
     // handshake. A binary semaphore cannot count, which is what made a
     // single missed pairing stick permanently.
     if (xSemaphoreTake(done, pdMS_TO_TICKS(500)) != pdTRUE) {
+        timeouts++;
         vTaskDelay(pdMS_TO_TICKS(20));
         while (xSemaphoreTake(done, 0) == pdTRUE) { }
     }
     pending = false;
 }
+
+uint32_t dmaTimeouts() { return timeouts; }
 
 void setBrightness(uint8_t v)
 {

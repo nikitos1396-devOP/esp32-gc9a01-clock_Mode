@@ -23,4 +23,9 @@ void waitIdle();
 // 0..255, the controller's own brightness command; there is no backlight.
 void setBrightness(uint8_t v);
 
+// How many times a transfer failed to report in. Should stay at zero; a
+// climbing count means the panel handshake is breaking down, which looks
+// like a frozen display while everything else keeps running.
+uint32_t dmaTimeouts();
+
 } // namespace amoled

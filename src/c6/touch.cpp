@@ -68,7 +68,16 @@ static Gesture step(uint32_t now)
 {
     int x, y;
     bool on;
-    { i2cbus::Hold h; on = read(x, y); }
+    // If the bus is busy, this sample simply did not happen: leave every bit
+    // of gesture state alone and try again in 20 ms. Guessing at a position
+    // we did not read would fake a jump the finger never made, and the
+    // long-press timer runs off the clock rather than off sample counts, so
+    // a dropped one costs nothing.
+    {
+        i2cbus::Hold h;
+        if (!h.ok()) return NONE;
+        on = read(x, y);
+    }
     if (on) applyRotation(x, y);
 
     if (on && !down) {                       // finger down

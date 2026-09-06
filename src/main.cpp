@@ -26,7 +26,18 @@
 #include "c6/alarm_ui.h"
 #include "c6/rtc.h"
 #include "c6/imu.h"
+#include "c6/supervisor.h"
 #include "alarms.h"
+// Marking where loop() has got to has to cost nothing on the boards that
+// do not have a supervisor, and has to read as an aside where it does -
+// these are sprinkled through a loop whose actual subject is the clock.
+#define SUP(p)      supervisor::phase(supervisor::p)
+#define SUP_ALIVE() supervisor::alive()
+#define SUP_DREW()  supervisor::drew()
+#else
+#define SUP(p)      ((void)0)
+#define SUP_ALIVE() ((void)0)
+#define SUP_DREW()  ((void)0)
 #endif
 
 // ----------------------------- compiled-in defaults ------------------------
@@ -220,10 +231,20 @@ static bool resolveLocation()
 // from the one in use; acted on by loop(). See the note at the assignment.
 static volatile bool tzPending = false;
 
+// Weather fetches attempted. Climbing fast means it is failing and retrying
+// every 30 s rather than succeeding every 10 minutes, which is worth knowing
+// on its own - see the freeze diagnostics note below.
+volatile uint32_t diagWx = 0;
+
+// A zone name handed from the weather task to the render loop. See the note
+// where it is written.
+static char tzStaged[64] = "";
+
 static void weatherTask(void *)
 {
     for (;;) {
         bool ok = false;
+        diagWx++;
 
         if (WiFi.status() != WL_CONNECTED) {
             wxErr = 1;
@@ -294,8 +315,18 @@ static void weatherTask(void *)
                             if (changed) {
                                 settings.utcOffset = off;
                                 settings.hasOffset = true;
-                                if (tzn[0]) settings.tzName = tzn;
-                                settingsSave();
+                                // The zone name is staged in a plain buffer
+                                // rather than assigned to settings.tzName
+                                // here. That field is an Arduino String, and
+                                // assigning one frees its buffer and
+                                // allocates another - while the render loop
+                                // may be reading the same String through
+                                // tzString(). Use-after-free across two
+                                // tasks, and it only shows up on a build
+                                // with no TZ_INFO in config.h, which is
+                                // exactly what the released images are.
+                                strncpy(tzStaged, tzn, sizeof tzStaged - 1);
+                                tzStaged[sizeof tzStaged - 1] = 0;
                                 // Ask the render loop to apply it rather than
                                 // doing it here. tzset() rewrites newlib's
                                 // global zone state and the loop reads that
@@ -658,14 +689,48 @@ void setup()
 
     screenInvalidate();
     screenClear(activeFace->background());
+
+#ifdef AMOLED_C6
+    // Last, so the minutes setup can spend waiting on WiFi and NTP are not
+    // read as a stall.
+    supervisor::begin();
+#endif
 }
+
+// ---- freeze diagnostics ----------------------------------------------------
+// The clock has twice stopped updating after some hours and come back when
+// touched. Reading the code has not found it, so these count the things that
+// would each explain it, and the alarm screen shows them - which is reachable
+// by a long press even while the display is stuck.
+//
+//   loops   loop() is running at all
+//   frames  screenRenderFace() is actually being called
+//   stale   seconds since the last frame was drawn
+//   dma     panel transfers that never reported in
+//
+// loops climbing while frames does not means the loop runs but decides no
+// frame is due. Both frozen means loop() is blocked. dma climbing means the
+// panel handshake is the problem and the rest is a symptom.
+volatile uint32_t diagLoops = 0, diagFrames = 0, diagLastFrameMs = 0;
 
 void loop()
 {
+    diagLoops++;
+    SUP(P_TZ);
+
     // Apply a timezone the weather task has asked for, before this frame
     // reads the clock - so the zone cannot change underneath localtime_r().
-    if (tzPending) { tzPending = false; applyTimezone(CFG_TZ); }
+    if (tzPending) {
+        tzPending = false;
+        // The loop owns settings.tzName: it is the only thing that assigns
+        // the String and the only thing that reads it, so there is no window
+        // where one task reallocates it under another.
+        if (tzStaged[0]) settings.tzName = tzStaged;
+        settingsSave();
+        applyTimezone(CFG_TZ);
+    }
 
+    SUP(P_TIME);
     struct timeval tv;
     gettimeofday(&tv, nullptr);
 
@@ -673,6 +738,7 @@ void loop()
     struct tm t;
     localtime_r(&now, &t);
 
+    SUP(P_PORTAL);
     portal::handle();
 
 #ifdef AMOLED_C6
@@ -680,6 +746,7 @@ void loop()
     // few Hz - it only has to notice a wrist turning, and the I2C read shares
     // a bus with touch.
     {
+        SUP(P_IMU);
         static uint32_t lastImu = 0;
         if (millis() - lastImu > 150) {
             lastImu = millis();
@@ -695,12 +762,19 @@ void loop()
         if (due >= 0) { alarmsMarkFired(due, t); alarm_ui::ring(due); }
     }
 
+    SUP(P_ALARM);
     if (alarm_ui::running()) {
         // The alarm screens want the finger itself, not gestures: they scroll
         // and have buttons. Feed them every sample and let them own the frame.
         alarm_ui::touch(touch::pressed(), touch::x(), touch::y());
         while (touch::poll() != touch::NONE) { }   // discard, so none queue up
         alarm_ui::draw();
+        // The alarm screens paint the panel themselves and then leave, so
+        // both heartbeats have to be fed here as well as at the bottom of a
+        // normal pass - otherwise sitting on the alarm list for a minute and
+        // a half looks exactly like a display that has died.
+        SUP_DREW();
+        SUP_ALIVE();
         return;
     }
 
@@ -708,6 +782,7 @@ void loop()
     // rather than from the gesture the sampler reports on release.
     trackBrightness(t);
 
+    SUP(P_TOUCH);
     // Touch: swipe through the faces in list order, hold for the alarms.
     // Drained, not sampled: the sampler runs at 20 ms while a smooth frame can
     // hold this loop for ~125 ms, so several gestures may be waiting. Taking
@@ -755,11 +830,16 @@ void loop()
     if (due) {
         lastSec     = t.tm_sec;
         lastFrameMs = millis();
+        diagFrames++;
+        diagLastFrameMs = lastFrameMs;
         float sub = smooth ? tv.tv_usec / 1000000.0f : 0.0f;
+        SUP(P_RENDER);
         screenRenderFace(activeFace, t, sub, portal::running());
+        SUP_DREW();
     }
 
     // Re-evaluate link/sync state once a second for the status indicator.
+    SUP(P_NET);
     if (millis() - lastSyncCheck > 1000) {
         lastSyncCheck = millis();
         bool up = WiFi.status() == WL_CONNECTED;
@@ -811,6 +891,9 @@ void loop()
             WiFi.reconnect();
         }
     }
+
+    SUP(P_IDLE);
+    SUP_ALIVE();
 
     // Frame rate is bounded by the panel transfer, not by this delay.
     delay(5);

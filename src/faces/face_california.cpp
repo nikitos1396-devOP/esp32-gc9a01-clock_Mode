@@ -47,7 +47,13 @@ namespace face_california {
                              // is what makes it look like paint rather than
                              // backlight. Still 8.5:1 on the dial.
 #define C_INK_DIM   0x6B4D   // the minute track between hours, warmed to match
-#define C_SEC       0xF986   // the seconds hairline
+#define C_SEC       0xC166   // the seconds hairline: a deep crimson rather
+                             // than the pillar-box red it was, which pulled
+                             // the eye off the hands it sits under. Not a
+                             // true maroon - at 1.7:1 on this dial a 1.5 px
+                             // hairline all but disappears, and a thin mark
+                             // needs more contrast than a broad one, not
+                             // less. This is 2.6:1, down from 4.0.
 #define C_DATE      0xCE35
 #define C_EDGE      0x0000   // the hairline the hands are outlined in
 #define C_SUB       0x1189   // the well the weather sits in, a shade darker
