@@ -74,6 +74,15 @@ def main():
         exe = pio()
         for board, args in TARGETS:
             print("\n=== %s ===" % board)
+            # Clear the last run's image first. A build can fail for reasons
+            # that have nothing to do with the code - a flaky package install
+            # took the C6 out once - and the danger is not the failure but
+            # what it leaves behind: an image from an earlier release sitting
+            # in dist/ under the right name, looking every bit as ready to
+            # upload as the one that was meant to replace it.
+            dst = os.path.join(DIST, "clock-%s.bin" % board)
+            if os.path.exists(dst):
+                os.remove(dst)
             r = subprocess.run([exe] + args, cwd=ROOT)
             if r.returncode != 0:
                 print("build failed for %s" % board)
@@ -82,7 +91,6 @@ def main():
             if not os.path.exists(src):
                 print("no image produced for %s" % board)
                 return 1
-            dst = os.path.join(DIST, "clock-%s.bin" % board)
             shutil.copy2(src, dst)
             print("  -> %s (%.0f KB)" % (dst, os.path.getsize(dst) / 1024))
     finally:
