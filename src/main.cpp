@@ -642,6 +642,7 @@ void setup()
     else           seedDefaults();
 
     WiFi.mode(WIFI_STA);
+    WiFi.setTxPower(WIFI_POWER_8_5dBm);
     WiFi.setSleep(false);
     WiFi.setAutoReconnect(true);
 
