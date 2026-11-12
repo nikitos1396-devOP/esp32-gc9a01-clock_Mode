@@ -1,0 +1,32 @@
+name: Build ESP32-C3 Firmware
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: pip install -U platformio
+
+      - name: Build firmware
+        run: pio run
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32c3-clock-firmware
+          path: |
+            .pio/build/*/firmware.bin
+            .pio/build/*/bootloader.bin
+            .pio/build/*/partitions.bin
