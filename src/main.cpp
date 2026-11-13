@@ -11,7 +11,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include <WiFiClient.h>
 #include <ArduinoJson.h>
 #include <time.h>
 #include <sys/time.h>
@@ -267,11 +266,15 @@ static void weatherTask(void *)
 
             char url[256];
             snprintf(url, sizeof url,
-                     "http://openweathermap.org"
-                     "&units=metric&appid=76987de907a9abab6e042e91e0e22a74");
+                     "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
+                     "&current=temperature_2m,weather_code,is_day"
+                     "&daily=sunrise,sunset&timezone=auto&forecast_days=1"
+                     "&temperature_unit=%s",
+                     settings.lat, settings.lon, settings.useF ? "fahrenheit" : "celsius");
 
             WiFiClient client;
             HTTPClient http;
+            http.useHTTP10(true);
             http.setConnectTimeout(8000);
             http.setTimeout(8000);
 
@@ -286,33 +289,61 @@ static void weatherTask(void *)
                     if (deserializeJson(doc, http.getString())) {
                         wxErr = 4;
                     } else {
-                        wxTempF = (int)lroundf(doc["main"]["temp"] | 0.0f);
-                        int owmId = doc["weather"][0]["id"] | 800;
-                        // Переводим код OpenWeatherMap в коды WMO для иконок часов
-                        if (owmId == 800) wxCode = 0;
-                        else if (owmId <= 802) wxCode = 2;
-                        else if (owmId <= 804) wxCode = 3;
-                        else if (owmId >= 700 && owmId < 800) wxCode = 45;
-                        else if (owmId >= 600 && owmId < 700) wxCode = 71;
-                        else if (owmId >= 300 && owmId < 600) wxCode = 61;
-                        else if (owmId >= 200 && owmId < 300) wxCode = 95;
-                        else wxCode = 1;
+                        JsonObject cur = doc["current"];
+                        if (cur.isNull()) {
+                            wxErr = 5;
+                        } else {
+                            wxTempF = (int)lroundf(cur["temperature_2m"] | 0.0f);
+                            wxCode  = cur["weather_code"] | -1;
+                            wxIsDay = ((int)(cur["is_day"] | 1)) != 0;
+                            wxValid = true;
+                            wxErr   = 0;
+                            ok      = true;
 
-                        long dt = doc["dt"] | 0L;
-                        long sr = doc["sys"]["sunrise"] | 0L;
-                        long ss = doc["sys"]["sunset"] | 0L;
-                        wxIsDay = (dt >= sr && dt < ss);
+                            // timezone=auto, so these arrive already local
+                            JsonObject daily = doc["daily"];
+                            if (!daily.isNull()) {
+                                wxSunrise = isoToMinutes(
+                                    daily["sunrise"][0] | (const char *)nullptr);
+                                wxSunset  = isoToMinutes(
+                                    daily["sunset"][0]  | (const char *)nullptr);
+                            }
 
-                        // Конвертируем время рассвета и заката (UTC+7 = 25200 сек) в минуты от начала суток
-                        if (sr > 0 && ss > 0) {
-                            wxSunrise = ((sr + 25200L) % 86400L) / 60;
-                            wxSunset  = ((ss + 25200L) % 86400L) / 60;
+                            // The feed also says which zone the coordinates
+                            // are in and the current offset. That keeps the
+                            // clock right for places the table does not know
+                            // and across DST changes.
+                            int         off = doc["utc_offset_seconds"] | 0;
+                            const char *tzn = doc["timezone"] | "";
+                            bool changed = !settings.hasOffset || off != settings.utcOffset
+                                        || (tzn[0] && settings.tzName != tzn);
+                            if (changed) {
+                                settings.utcOffset = off;
+                                settings.hasOffset = true;
+                                // The zone name is staged in a plain buffer
+                                // rather than assigned to settings.tzName
+                                // here. That field is an Arduino String, and
+                                // assigning one frees its buffer and
+                                // allocates another - while the render loop
+                                // may be reading the same String through
+                                // tzString(). Use-after-free across two
+                                // tasks, and it only shows up on a build
+                                // with no TZ_INFO in config.h, which is
+                                // exactly what the released images are.
+                                strncpy(tzStaged, tzn, sizeof tzStaged - 1);
+                                tzStaged[sizeof tzStaged - 1] = 0;
+                                // Ask the render loop to apply it rather than
+                                // doing it here. tzset() rewrites newlib's
+                                // global zone state and the loop reads that
+                                // state through localtime_r() on every pass;
+                                // doing both at once from two tasks is a race
+                                // over shared, unguarded data. The loop is
+                                // the only place that reads it, so it is the
+                                // only place that should write it.
+                                tzPending = true;
+                            }
                         }
-
-                        wxValid = true;
-                        wxErr   = 0;
-                        ok      = true;
-                     }
+                    }
                 }
                 http.end();
             }
