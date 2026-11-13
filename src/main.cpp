@@ -183,7 +183,7 @@ static bool resolveLocation()
     if (settings.hasLoc) return true;
     if (!settings.locQuery.length() || WiFi.status() != WL_CONNECTED) return false;
 
-    String url = "http://open-meteo.com"
+    String url = "http://open-meteo.com/v1/search?count=1&language=en&format=json&name="
                  + urlEncode(settings.locQuery);
     WiFiClient client;
     HTTPClient http;
@@ -200,7 +200,7 @@ static bool resolveLocation()
         f["latitude"] = true; f["longitude"] = true; f["timezone"] = true;
         f["name"] = true;     f["country_code"] = true;
         JsonDocument doc;
-        if (!deserializeJson(doc, http.getString(), DeserializationOption::Filter(filter))) {
+        if (!deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter))) {
             JsonObject r = doc["results"][0];
             if (!r.isNull()) {
                 settings.lat     = r["latitude"]  | 0.0f;
