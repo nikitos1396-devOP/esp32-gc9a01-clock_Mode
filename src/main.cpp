@@ -262,8 +262,10 @@ static void weatherTask(void *)
             wxUseF = settings.useF;
 
             char url[256];
-            snprintf(url, sizeof url,
-                     "http://api.openweathermap.org/data/2.5/weather?q=Barnaul,RU&APPID=76987de907a9abab6e042e91e0e22a74&units=metric&lang=ru";
+            snprintf(url, sizeof(url),
+                     "http://api.openweathermap.org/data/2.5/weather?q=Barnaul,RU&appid=%s&units=metric&lang=ru",
+                     OPENWEATHER_API_KEY
+            );    
 
             WiFiClient client;
             HTTPClient http;
