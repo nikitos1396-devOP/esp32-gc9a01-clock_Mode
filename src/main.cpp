@@ -187,6 +187,7 @@ static bool resolveLocation()
                  + urlEncode(settings.locQuery);
     WiFiClient client;
     HTTPClient http;
+    http.useHTTP10(true);
     http.setConnectTimeout(8000);
     http.setTimeout(8000);
     if (!http.begin(client, url)) return false;
@@ -266,7 +267,7 @@ static void weatherTask(void *)
 
             char url[256];
             snprintf(url, sizeof url,
-                     "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
+                     "http://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
                      "&current=temperature_2m,weather_code,is_day"
                      "&daily=sunrise,sunset&timezone=auto&forecast_days=1"
                      "&temperature_unit=%s",
