@@ -263,7 +263,7 @@ static void weatherTask(void *)
 
             char url[256];
             snprintf(url, sizeof(url),
-                     "http://api.openweathermap.org/data/2.5/weather?q=Barnaul,RU&appid=%s&units=metric&lang=ru",
+                     "http://api.openweathermap.org/data/2.5/weather?q=Barnaul,RU&appid=76987de907a9abab6e042e91e0e22a74&units=metric&lang=ru",
                      OPENWEATHER_API_KEY
             );    
 
