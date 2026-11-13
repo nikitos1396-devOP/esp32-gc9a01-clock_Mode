@@ -280,10 +280,16 @@ static void weatherTask(void *)
             http.setTimeout(10000);
 
             if (!http.begin(client, url)) {
+                banner("WX", "begin fail", 0xF800);
+                delay(3000);
                 wxErr = 2;
             } else {
                 int code = http.GET();
                 if (code != HTTP_CODE_OK) {
+                    char errBuf[24];
+                    snprintf(errBuf, sizeof errBuf, "HTTP: %d", code);
+                    banner("WX ERR", errBuf, 0xF800);
+                    delay(3000);
                     wxErr = 3;
                 } else {
                     JsonDocument doc;
