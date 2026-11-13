@@ -66,6 +66,10 @@ static const TzRule TZ_TABLE[] = {
     {"Europe/Sofia",          "EET-2EEST,M3.5.0/3,M10.5.0/4"},
     {"Europe/Istanbul",       "<+03>-3"},
     {"Europe/Moscow",         "MSK-3"},
+    {"Asia/Barnaul",          "<+07>-7"},
+    {"Asia/Novosibirsk",      "<+07>-7"},
+    {"Asia/Krasnoyarsk",      "<+07>-7"},
+
     // Africa, Middle East, Asia
     {"Africa/Cairo",          "EET-2EEST,M4.5.5/0,M10.5.4/24"},
     {"Africa/Johannesburg",   "SAST-2"},
