@@ -11,7 +11,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <time.h>
 #include <sys/time.h>
@@ -264,15 +263,12 @@ static void weatherTask(void *)
 
             char url[256];
             snprintf(url, sizeof url,
-                     "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
-                     "&current=temperature_2m,weather_code,is_day"
-                     "&daily=sunrise,sunset&timezone=auto&forecast_days=1"
-                     "&temperature_unit=%s",
+                     "http://api.openweathermap.org/data/2.5/weather?q=Barnaul,ru&APPID=76987de907a9abab6e042e91e0e22a74"
                      settings.lat, settings.lon, settings.useF ? "fahrenheit" : "celsius");
 
-            WiFiClientSecure client;
-            client.setInsecure();
+            WiFiClient client;
             HTTPClient http;
+            http.useHTTP10(true);
             http.setConnectTimeout(8000);
             http.setTimeout(8000);
 
@@ -280,68 +276,46 @@ static void weatherTask(void *)
                 wxErr = 2;
             } else {
                 int code = http.GET();
-                Serial.printf("URL: %s\n", url);
-                Serial.printf("HTTP code: %d, wxErr: %d\n", code, wxErr);
                 if (code != HTTP_CODE_OK) {
                     wxErr = 3;
                 } else {
                     JsonDocument doc;
-                    if (deserializeJson(doc, http.getStream())) {
+                    if (deserializeJson(doc, http.getString())) {
                         wxErr = 4;
                     } else {
-                        JsonObject cur = doc["current"];
-                        if (cur.isNull()) {
+                        JsonObject mainObj = doc["main"];
+                        if (mainObj.isNull()) {
                             wxErr = 5;
                         } else {
-                            wxTempF = (int)lroundf(cur["temperature_2m"] | 0.0f);
-                            wxCode  = cur["weather_code"] | -1;
-                            wxIsDay = ((int)(cur["is_day"] | 1)) != 0;
+                            wxTempF = (int)lroundf(mainObj["temp"] | 0.0f);
+
+                            // Конвертируем код погоды OpenWeatherMap в коды WMO (которые ждут циферблаты)
+                            int owmId = doc["weather"]["id"] | 800;
+                            if (owmId == 800) wxCode = 0;                       // Ясно
+                            else if (owmId == 801 || owmId == 802) wxCode = 2;  // Переменная облачность
+                            else if (owmId >= 803) wxCode = 3;                  // Пасмурно
+                            else if (owmId >= 700 && owmId < 800) wxCode = 45;  // Туман
+                            else if (owmId >= 600 && owmId < 700) wxCode = 71;  // Снег
+                            else if (owmId >= 500 && owmId < 600) wxCode = 61;  // Дождь
+                            else if (owmId >= 300 && owmId < 400) wxCode = 51;  // Морось
+                            else if (owmId >= 200 && owmId < 300) wxCode = 95;  // Гроза
+                            else wxCode = 0;
+
+                            // Определяем день/ночь и минуты рассвета/заката по местному времени
+                            long dt      = doc["dt"] | 0L;
+                            long sunrise = doc["sys"]["sunrise"] | 0L;
+                            long sunset  = doc["sys"]["sunset"] | 0L;
+                            int  tzOff   = doc["timezone"] | 25200; // для Барнаула 25200
+
+                            if (sunrise > 0 && sunset > 0) {
+                                wxIsDay   = (dt >= sunrise && dt < sunset);
+                                wxSunrise = ((sunrise + tzOff) % 86400) / 60;
+                                wxSunset  = ((sunset  + tzOff) % 86400) / 60;
+                            }
+
                             wxValid = true;
                             wxErr   = 0;
                             ok      = true;
-
-                            // timezone=auto, so these arrive already local
-                            JsonObject daily = doc["daily"];
-                            if (!daily.isNull()) {
-                                wxSunrise = isoToMinutes(
-                                    daily["sunrise"][0] | (const char *)nullptr);
-                                wxSunset  = isoToMinutes(
-                                    daily["sunset"][0]  | (const char *)nullptr);
-                            }
-
-                            // The feed also says which zone the coordinates
-                            // are in and the current offset. That keeps the
-                            // clock right for places the table does not know
-                            // and across DST changes.
-                            int         off = doc["utc_offset_seconds"] | 0;
-                            const char *tzn = doc["timezone"] | "";
-                            bool changed = !settings.hasOffset || off != settings.utcOffset
-                                        || (tzn[0] && settings.tzName != tzn);
-                            if (changed) {
-                                settings.utcOffset = off;
-                                settings.hasOffset = true;
-                                // The zone name is staged in a plain buffer
-                                // rather than assigned to settings.tzName
-                                // here. That field is an Arduino String, and
-                                // assigning one frees its buffer and
-                                // allocates another - while the render loop
-                                // may be reading the same String through
-                                // tzString(). Use-after-free across two
-                                // tasks, and it only shows up on a build
-                                // with no TZ_INFO in config.h, which is
-                                // exactly what the released images are.
-                                strncpy(tzStaged, tzn, sizeof tzStaged - 1);
-                                tzStaged[sizeof tzStaged - 1] = 0;
-                                // Ask the render loop to apply it rather than
-                                // doing it here. tzset() rewrites newlib's
-                                // global zone state and the loop reads that
-                                // state through localtime_r() on every pass;
-                                // doing both at once from two tasks is a race
-                                // over shared, unguarded data. The loop is
-                                // the only place that reads it, so it is the
-                                // only place that should write it.
-                                tzPending = true;
-                            }
                         }
                     }
                 }
