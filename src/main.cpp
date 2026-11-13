@@ -184,10 +184,9 @@ static bool resolveLocation()
     if (settings.hasLoc) return true;
     if (!settings.locQuery.length() || WiFi.status() != WL_CONNECTED) return false;
 
-    String url = "https://open-meteo.com/v1/search?count=1&language=en&format=json&name="
+    String url = "http://open-meteo.com/v1/search?count=1&language=en&format=json&name="
                  + urlEncode(settings.locQuery);
-    WiFiClientSecure client;
-    client.SetInsecure();
+    WiFiClient client;
     HTTPClient http;
     http.useHTTP10(true);
     http.setConnectTimeout(8000);
@@ -274,7 +273,6 @@ static void weatherTask(void *)
             WiFiClientSecure client;
             client.setInsecure();
             HTTPClient http;
-            http.useHTTP10(true);
             http.setConnectTimeout(8000);
             http.setTimeout(8000);
 
