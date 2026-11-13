@@ -11,6 +11,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <time.h>
 #include <sys/time.h>
@@ -183,9 +184,10 @@ static bool resolveLocation()
     if (settings.hasLoc) return true;
     if (!settings.locQuery.length() || WiFi.status() != WL_CONNECTED) return false;
 
-    String url = "http://open-meteo.com/v1/search?count=1&language=en&format=json&name="
+    String url = "https://open-meteo.com/v1/search?count=1&language=en&format=json&name="
                  + urlEncode(settings.locQuery);
-    WiFiClient client;
+    WiFiClientSecure client;
+    client.SetInsecure();
     HTTPClient http;
     http.useHTTP10(true);
     http.setConnectTimeout(8000);
@@ -263,13 +265,14 @@ static void weatherTask(void *)
 
             char url[256];
             snprintf(url, sizeof url,
-                     "http://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
+                     "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
                      "&current=temperature_2m,weather_code,is_day"
                      "&daily=sunrise,sunset&timezone=auto&forecast_days=1"
                      "&temperature_unit=%s",
                      settings.lat, settings.lon, settings.useF ? "fahrenheit" : "celsius");
 
-            WiFiClient client;
+            WiFiClientSecure client;
+            client.setInsecure();
             HTTPClient http;
             http.useHTTP10(true);
             http.setConnectTimeout(8000);
