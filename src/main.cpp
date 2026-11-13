@@ -279,6 +279,8 @@ static void weatherTask(void *)
                 wxErr = 2;
             } else {
                 int code = http.GET();
+                Serial.printf("URL: %s\n", url);
+                Serial.printf("HTTP code: %d, wxErr: %d\n", code, wxErr);
                 if (code != HTTP_CODE_OK) {
                     wxErr = 3;
                 } else {
@@ -345,6 +347,8 @@ static void weatherTask(void *)
                 http.end();
             }
         }
+        Serial.printf("URL: %s\n", url);
+        Serial.printf("HTTP code: %d, wxErr: %d\n", code, wxErr);
         Serial.printf("WX: err=%d, hasLoc=%d, lat=%.4f, lon=%.4f\n", wxErr, settings.hasLoc, settings.lat, settings.lon);
         vTaskDelay(pdMS_TO_TICKS(ok ? WX_PERIOD_MS : WX_RETRY_MS));
     }
