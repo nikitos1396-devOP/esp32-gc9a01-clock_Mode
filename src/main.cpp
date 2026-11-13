@@ -11,6 +11,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <time.h>
 #include <sys/time.h>
@@ -266,16 +267,17 @@ static void weatherTask(void *)
 
             char url[256];
             snprintf(url, sizeof url,
-                     "http://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
+                     "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
                      "&current=temperature_2m,weather_code,is_day"
                      "&daily=sunrise,sunset&timezone=auto&forecast_days=1"
                      "&temperature_unit=%s",
                      settings.lat, settings.lon, settings.useF ? "fahrenheit" : "celsius");
 
-            WiFiClient client;
+            WiFiClientSecure client;
+            client.setInsecure();
             HTTPClient http;
-            http.setConnectTimeout(8000);
-            http.setTimeout(8000);
+            http.setConnectTimeout(10000);
+            http.setTimeout(10000);
 
             if (!http.begin(client, url)) {
                 wxErr = 2;
@@ -647,7 +649,7 @@ void setup()
     else           seedDefaults();
 
     WiFi.mode(WIFI_STA);
-    WiFi.setTxPower(WIFI_POWER_8_5dBm);
+    WiFi.setTxPower(WIFI_POWER_11dBm);
     WiFi.setSleep(false);
     WiFi.setAutoReconnect(true);
 
@@ -691,7 +693,7 @@ void setup()
 
     // Weather runs on core 0 with WiFi; the render loop owns core 1 on the
     // S3. On the single-core chips it is just another task.
-    xTaskCreatePinnedToCore(weatherTask, "weather", 10240, nullptr, 1, nullptr, 0);
+    xTaskCreatePinnedToCore(weatherTask, "weather", 16384, nullptr, 1, nullptr, 0);
 
     screenInvalidate();
     screenClear(activeFace->background());
