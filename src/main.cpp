@@ -347,8 +347,6 @@ static void weatherTask(void *)
                 http.end();
             }
         }
-        Serial.printf("URL: %s\n", url);
-        Serial.printf("HTTP code: %d, wxErr: %d\n", code, wxErr);
         Serial.printf("WX: err=%d, hasLoc=%d, lat=%.4f, lon=%.4f\n", wxErr, settings.hasLoc, settings.lat, settings.lon);
         vTaskDelay(pdMS_TO_TICKS(ok ? WX_PERIOD_MS : WX_RETRY_MS));
     }
