@@ -245,6 +245,7 @@ static void weatherTask(void *)
     for (;;) {
         bool ok = false;
         diagWx++;
+        settings.hasLoc = true;
 
         if (WiFi.status() != WL_CONNECTED) {
             wxErr = 1;
@@ -258,6 +259,9 @@ static void weatherTask(void *)
             // zone that has not changed gains nothing and gave the race ten
             // chances an hour. It is applied at boot and when the feed says
             // the zone or offset has actually changed - see below.
+            settings.lat = 53.3548f;
+            settings.lon = 83.7698f;
+            settings.useF = false;
             wxUseF = settings.useF;
 
             char url[256];
