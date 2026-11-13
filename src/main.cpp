@@ -263,8 +263,7 @@ static void weatherTask(void *)
 
             char url[256];
             snprintf(url, sizeof url,
-                     "http://api.openweathermap.org/data/2.5/weather?q=Barnaul,ru&APPID=76987de907a9abab6e042e91e0e22a74"
-                     settings.lat, settings.lon, settings.useF ? "fahrenheit" : "celsius");
+                     "http://api.openweathermap.org/data/2.5/weather?q=Barnaul,RU&APPID=76987de907a9abab6e042e91e0e22a74&units=metric&lang=ru";
 
             WiFiClient client;
             HTTPClient http;
@@ -275,8 +274,8 @@ static void weatherTask(void *)
             if (!http.begin(client, url)) {
                 wxErr = 2;
             } else {
-                int code = http.GET();
-                if (code != HTTP_CODE_OK) {
+                int httpCode = http.GET();
+                if (httpCode != HTTP_CODE_OK) {
                     wxErr = 3;
                 } else {
                     JsonDocument doc;
