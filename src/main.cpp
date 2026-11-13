@@ -187,7 +187,6 @@ static bool resolveLocation()
                  + urlEncode(settings.locQuery);
     WiFiClient client;
     HTTPClient http;
-    http.useHTTP10(true);
     http.setConnectTimeout(8000);
     http.setTimeout(8000);
     if (!http.begin(client, url)) return false;
@@ -267,11 +266,10 @@ static void weatherTask(void *)
 
             char url[256];
             snprintf(url, sizeof url,
-                     "http://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
+                     "http://open-meteo.com"
                      "&current=temperature_2m,weather_code,is_day"
                      "&daily=sunrise,sunset&timezone=auto&forecast_days=1"
-                     "&temperature_unit=%s",
-                     settings.lat, settings.lon, settings.useF ? "fahrenheit" : "celsius");
+                     "&temperature_unit=celsius");
 
             WiFiClient client;
             HTTPClient http;
@@ -283,11 +281,19 @@ static void weatherTask(void *)
                 wxErr = 2;
             } else {
                 int code = http.GET();
+                Serial.printf("WX HTTP code: %d, Free heap: %u\n", code, ESP.getFreeHeap());
                 if (code != HTTP_CODE_OK) {
                     wxErr = 3;
                 } else {
+                    JsonDocument filter;
+                    filter["current"]["temperature_2m"] = true;
+                    filter["current"]["weather_code"] = true;
+                    filter["current"]["is_day"] = true;
+                    filter["daily"]["sunrise"] = true;
+                    filter["daily"]["sunset"] = true;
+                    
                     JsonDocument doc;
-                    if (deserializeJson(doc, http.getString())) {
+                    if (deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter))) {
                         wxErr = 4;
                     } else {
                         JsonObject cur = doc["current"];
@@ -301,47 +307,10 @@ static void weatherTask(void *)
                             wxErr   = 0;
                             ok      = true;
 
-                            // timezone=auto, so these arrive already local
                             JsonObject daily = doc["daily"];
                             if (!daily.isNull()) {
-                                wxSunrise = isoToMinutes(
-                                    daily["sunrise"][0] | (const char *)nullptr);
-                                wxSunset  = isoToMinutes(
-                                    daily["sunset"][0]  | (const char *)nullptr);
-                            }
-
-                            // The feed also says which zone the coordinates
-                            // are in and the current offset. That keeps the
-                            // clock right for places the table does not know
-                            // and across DST changes.
-                            int         off = doc["utc_offset_seconds"] | 0;
-                            const char *tzn = doc["timezone"] | "";
-                            bool changed = !settings.hasOffset || off != settings.utcOffset
-                                        || (tzn[0] && settings.tzName != tzn);
-                            if (changed) {
-                                settings.utcOffset = off;
-                                settings.hasOffset = true;
-                                // The zone name is staged in a plain buffer
-                                // rather than assigned to settings.tzName
-                                // here. That field is an Arduino String, and
-                                // assigning one frees its buffer and
-                                // allocates another - while the render loop
-                                // may be reading the same String through
-                                // tzString(). Use-after-free across two
-                                // tasks, and it only shows up on a build
-                                // with no TZ_INFO in config.h, which is
-                                // exactly what the released images are.
-                                strncpy(tzStaged, tzn, sizeof tzStaged - 1);
-                                tzStaged[sizeof tzStaged - 1] = 0;
-                                // Ask the render loop to apply it rather than
-                                // doing it here. tzset() rewrites newlib's
-                                // global zone state and the loop reads that
-                                // state through localtime_r() on every pass;
-                                // doing both at once from two tasks is a race
-                                // over shared, unguarded data. The loop is
-                                // the only place that reads it, so it is the
-                                // only place that should write it.
-                                tzPending = true;
+                                wxSunrise = isoToMinutes(daily["sunrise"][0] | (const char *)nullptr);
+                                wxSunset  = isoToMinutes(daily["sunset"][0]
                             }
                         }
                     }
@@ -693,7 +662,7 @@ void setup()
 
     // Weather runs on core 0 with WiFi; the render loop owns core 1 on the
     // S3. On the single-core chips it is just another task.
-    xTaskCreatePinnedToCore(weatherTask, "weather", 16384, nullptr, 1, nullptr, 0);
+    xTaskCreatePinnedToCore(weatherTask, "weather", 6144, nullptr, 1, nullptr, 0);
 
     screenInvalidate();
     screenClear(activeFace->background());
