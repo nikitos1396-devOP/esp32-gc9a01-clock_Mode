@@ -603,7 +603,8 @@ void setup()
 
     parkOnboardLed();
 
-    faceIdx    = firstFaceIdx();
+    pinMode(9, INPUT_PULLUP);
+    faceIdx    = 0;
     activeFace = ROTATION[faceIdx];
 
     // Frame buffers are claimed in here, before WiFi comes up, while the heap
@@ -741,6 +742,18 @@ void loop()
 
     SUP(P_PORTAL);
     portal::handle();
+    static bool lastBootState = HIGH;
+    static uint32_t lastBootMs = 0;
+    bool curBootState = digitalRead(9);
+    if (lastBootState == HIGH && curBootState == LOW && (millis() - lastBootMs > 250)) {
+        lastBootMs = millis();
+        faceIdx = (faceIdx + 1) % ROTATION_N;
+        activeFace = ROTATION[faceIdx];
+        screenInvalidate();
+        screenClear(activeFace->background());
+    }
+    lastBootState = curBootState;
+
 
 #ifdef AMOLED_C6
     // Orientation: keep the face upright as the watch is turned. Sampled at a
