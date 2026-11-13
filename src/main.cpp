@@ -183,10 +183,11 @@ static bool resolveLocation()
     if (settings.hasLoc) return true;
     if (!settings.locQuery.length() || WiFi.status() != WL_CONNECTED) return false;
 
-    String url = "http://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name="
+    String url = "http://open-meteo.com"
                  + urlEncode(settings.locQuery);
     WiFiClient client;
     HTTPClient http;
+    http.useHTTP10(true);
     http.setConnectTimeout(8000);
     http.setTimeout(8000);
     if (!http.begin(client, url)) return false;
@@ -282,7 +283,7 @@ static void weatherTask(void *)
                     wxErr = 3;
                 } else {
                     JsonDocument doc;
-                    if (deserializeJson(doc, http.getString())) {
+                    if (deserializeJson(doc, http.getStream())) {
                         wxErr = 4;
                     } else {
                         JsonObject cur = doc["current"];
@@ -344,6 +345,7 @@ static void weatherTask(void *)
                 http.end();
             }
         }
+        Serial.printf("WX: err=%d, hasLoc=%d, lat=%.4f, lon=%.4f\n", wxErr, settings.hasLoc, settings.lat, settings.lon);
         vTaskDelay(pdMS_TO_TICKS(ok ? WX_PERIOD_MS : WX_RETRY_MS));
     }
 }
