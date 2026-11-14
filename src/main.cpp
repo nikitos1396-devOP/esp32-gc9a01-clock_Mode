@@ -183,7 +183,7 @@ static bool resolveLocation()
     if (settings.hasLoc) return true;
     if (!settings.locQuery.length() || WiFi.status() != WL_CONNECTED) return false;
 
-    String url = "http://open-meteo.com/v1/search?count=1&language=en&format=json&name="
+    String url = "http://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name="
                  + urlEncode(settings.locQuery);
     WiFiClient client;
     HTTPClient http;
