@@ -335,7 +335,6 @@ static void weatherTask(void *)
                             wxValid = true;
                             wxErr   = 0;
                             ok      = true;
-                        }
                     }
                 }
                 http.end();
