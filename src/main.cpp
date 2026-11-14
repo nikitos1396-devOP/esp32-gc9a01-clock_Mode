@@ -261,8 +261,10 @@ static void weatherTask(void *)
             // the zone or offset has actually changed - see below.
             wxUseF = settings.useF;
 
-            String url = String("http://api.openweathermap.org/data/2.5/weather?q=Barnaul,RU&appid=")
-             + OWM_KEY + "&units=metric&lang=ru";
+            String url = String("http://api.openweathermap.org/data/2.5/weather?lat=" + String(settings.lat, 4))
+             + "&lon=" + String(settings.lon, 4)
+             + "&appid=" + OWM_KEY
+             + "&units=metric&lang=ru";
 
 #ifndef OWM_KEY
 #error "OWM_KEY is not defined"
