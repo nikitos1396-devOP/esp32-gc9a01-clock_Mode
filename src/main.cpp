@@ -20,6 +20,7 @@
 #include "settings.h"
 #include "portal.h"
 #include "tz.h"
+#include "font_ru.h"
 #ifdef AMOLED_C6
 #include "c6/touch.h"
 #include "c6/audio.h"
@@ -378,19 +379,14 @@ static void paintBanner(GfxDirect &g)
     uint16_t bg = activeFace->background();
     g.fillScreen(bg);
     g.setTextDatum(MC_DATUM);
+    g.loadFont(FontRu);
     g.setTextColor(bannerCol, bg);
-    // The headline in the bold face where there is one. On the AMOLED that
-    // is font 9, drawn at the panel's own resolution rather than a bitmap
-    // doubled; the GC9A01 boards have no such font and stay on font 4.
-#ifdef AMOLED_C6
-    g.drawString(bannerL1, 120, 108, 9);
-#else
-    g.drawString(bannerL1, 120, 108, 4);
-#endif
+    g.drawString(bannerL1, 120, 108);
     if (bannerL2) {
         g.setTextColor(0x7BEF, bg);
-        g.drawString(bannerL2, 120, 138, 2);
+        g.drawString(bannerL2, 120, 138);
     }
+    g.unloadFont();
 }
 static void banner(const char *line1, const char *line2, uint16_t color)
 {
@@ -403,22 +399,16 @@ static void banner(const char *line1, const char *line2, uint16_t color)
 static const char *setupStatus = "";
 static void paintSetup(GfxDirect &g)
 {
-    // The three lines that matter here - what to join, and where to go - in
-    // the bold face on the board that has one. This screen is read off a
-    // phone in one hand, so legibility is the whole job of it.
-#ifdef AMOLED_C6
-    const uint8_t HEAD = 9;
-#else
-    const uint8_t HEAD = 4;
-#endif
     g.fillScreen(0x0000);
     g.setTextDatum(MC_DATUM);
-    g.setTextColor(0xFD20, 0x0000); g.drawString("Настройки WiFi",       120,  50, HEAD);
-    g.setTextColor(0x9CD3, 0x0000); g.drawString("Подключитесь к сети:", 120,  82, 2);
-    g.setTextColor(0xFFFF, 0x0000); g.drawString(portal::AP_SSID,    120, 106, HEAD);
-    g.setTextColor(0x9CD3, 0x0000); g.drawString("затем перейдите на:",        120, 134, 2);
-    g.setTextColor(0xFFFF, 0x0000); g.drawString("192.168.4.1",      120, 158, HEAD);
-    g.setTextColor(0x7BEF, 0x0000); g.drawString(setupStatus,        120, 196, 2);
+    g.loadFont(FontRu);
+    g.setTextColor(0xFD20, 0x0000); g.drawString("Настройка WiFi",    120,  50);
+    g.setTextColor(0x9CD3, 0x0000); g.drawString("Подключись к сети", 120,  82);
+    g.setTextColor(0xFFFF, 0x0000); g.drawString(portal::AP_SSID,     120, 106);
+    g.setTextColor(0x9CD3, 0x0000); g.drawString("и открой",          120, 134);
+    g.setTextColor(0xFFFF, 0x0000); g.drawString("192.168.4.1",       120, 158);
+    g.setTextColor(0x7BEF, 0x0000); g.drawString(setupStatus,         120, 196);
+    g.unloadFont();
 }
 static void drawSetupScreen(const char *status)
 {
@@ -431,8 +421,8 @@ static const char *portalStatusText(portal::State s)
     switch (s) {
         case portal::CONNECTING: return "Подключение...";
         case portal::OK:         return "Подключено";
-        case portal::FAIL:       return "Не подключено, попробуйте ещё раз";
-        default:                 return "Ожидание подключения устройства";
+        case portal::FAIL:       return "Не удалось, попробуй ещё раз";
+        default:                 return "Жду устройство";
     }
 }
 
@@ -457,7 +447,7 @@ static bool bootHeld()
     pinMode(BOOT_BTN, INPUT_PULLUP);
     delay(20);
     if (digitalRead(BOOT_BTN) != LOW) return false;
-    banner("ЗАЖМИТЕ КНОПКУ", "на 3 секунды для сброса настроек", 0xFD20);
+    banner("Зажми КНОПКУ", "на 3 секунды для сброса настроек", 0xFD20);
     uint32_t t0 = millis();
     while (digitalRead(BOOT_BTN) == LOW) {
         if (millis() - t0 > 3000) return true;
@@ -658,12 +648,12 @@ void setup()
     // Where are we? Needed before NTP so the clock shows local time from the
     // first frame. If it fails here the weather task keeps trying.
     if (!settings.hasLoc && settings.locQuery.length()) {
-        banner("Location", settings.locQuery.c_str(), 0xE71C);
+        banner("Город", settings.locQuery.c_str(), 0xE71C);
         resolveLocation();
     }
     wxUseF = settings.useF;
 
-    banner("NTP", "синхронизация...", 0xE71C);
+    banner("Время", "синхронизация...", 0xE71C);
 
     // SNTP; the IDF layer re-syncs on its own roughly hourly afterwards.
     configTzTime(tzString(CFG_TZ), "pool.ntp.org", "time.google.com", "time.nist.gov");
