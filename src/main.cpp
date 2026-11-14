@@ -246,6 +246,10 @@ static char tzStaged[64] = "";
 #error "OWM_KEY is not defined"
 #endif
 
+#ifndef OWM_KEY
+#error "OWM_KEY is not defined"
+#endif
+
 static void weatherTask(void *)
 {
     for (;;) {
@@ -257,20 +261,14 @@ static void weatherTask(void *)
         } else if (!settings.hasLoc && !resolveLocation()) {
             wxErr = 6;                                    // location not found
         } else {
-            // The timezone is NOT re-applied here. It used to be, on every
-            // fetch, and that was a race: applyTimezone() is setenv+tzset,
-            // which rewrites newlib's global zone state, while the render
-            // loop calls localtime_r() on it every iteration. Re-applying a
-            // zone that has not changed gains nothing and gave the race ten
-            // chances an hour. It is applied at boot and when the feed says
-            // the zone or offset has actually changed - see below.
             wxUseF = settings.useF;
 
-            String url = String("http://api.openweathermap.org/data/2.5/weather?lat=" + String(settings.lat, 4))
-             + "&lon=" + String(settings.lon, 4)
-             + "&appid=" + OWM_KEY
-             + "&units=" + (wxUseF ? "imperial" : "metric");
-            
+            String url = String("http://api.openweathermap.org/data/2.5/weather?lat=")
+                       + String(settings.lat, 4)
+                       + "&lon=" + String(settings.lon, 4)
+                       + "&appid=" + OWM_KEY
+                       + "&units=" + (wxUseF ? "imperial" : "metric");
+
             WiFiClient client;
             HTTPClient http;
             http.useHTTP10(true);
@@ -285,63 +283,64 @@ static void weatherTask(void *)
                     wxErr = 3;
                 } else {
                     JsonDocument filter;
-                    filter["main"]["temp"] = true;
-                    filter["weather"][0]["id"] = true;
-                    filter["dt"] = true;
-                    filter["timezone"] = true;
-                    filter["sys"]["sunrise"] = true;
-                    filter["sys"]["sunset"] = true;
+                    filter["main"]["temp"]        = true;
+                    filter["weather"][0]["id"]    = true;
+                    filter["dt"]                  = true;
+                    filter["timezone"]            = true;
+                    filter["sys"]["sunrise"]      = true;
+                    filter["sys"]["sunset"]       = true;
+
                     JsonDocument doc;
-                    if (deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter))) {
+                    if (deserializeJson(doc, http.getStream(),
+                                        DeserializationOption::Filter(filter))) {
                         wxErr = 4;
+                    } else if (doc["main"].isNull()) {
+                        wxErr = 5;
                     } else {
-                        JsonObject mainObj = doc["main"];
-                        if (mainObj.isNull()) {
-                            wxErr = 5;
-                        } else {
-                            wxTempF = (int)lroundf(mainObj["temp"] | 0.0f);
+                        wxTempF = (int)lroundf(doc["main"]["temp"] | 0.0f);
 
-                            // Конвертируем код погоды OpenWeatherMap в коды WMO (которые ждут циферблаты)
-                            int owmId = doc["weather"][0]["id"] | 800;
-                            if (owmId == 800) wxCode = 0;                       // Ясно
-                            else if (owmId == 801 || owmId == 802) wxCode = 2;  // Переменная облачность
-                            else if (owmId >= 803) wxCode = 3;                  // Пасмурно
-                            else if (owmId >= 700 && owmId < 800) wxCode = 45;  // Туман
-                            else if (owmId >= 600 && owmId < 700) wxCode = 71;  // Снег
-                            else if (owmId >= 500 && owmId < 600) wxCode = 61;  // Дождь
-                            else if (owmId >= 300 && owmId < 400) wxCode = 51;  // Морось
-                            else if (owmId >= 200 && owmId < 300) wxCode = 95;  // Гроза
-                            else wxCode = 0;
+                        // OpenWeatherMap id -> WMO code expected by the faces
+                        int owmId = doc["weather"][0]["id"] | 800;
+                        if      (owmId == 800)                    wxCode = 0;   // clear
+                        else if (owmId == 801 || owmId == 802)    wxCode = 2;   // partly cloudy
+                        else if (owmId >= 803)                    wxCode = 3;   // overcast
+                        else if (owmId >= 700 && owmId < 800)     wxCode = 45;  // fog
+                        else if (owmId >= 600 && owmId < 700)     wxCode = 71;  // snow
+                        else if (owmId >= 500 && owmId < 600)     wxCode = 61;  // rain
+                        else if (owmId >= 300 && owmId < 400)     wxCode = 51;  // drizzle
+                        else if (owmId >= 200 && owmId < 300)     wxCode = 95;  // thunder
+                        else                                      wxCode = 0;
 
-                            // Определяем день/ночь и минуты рассвета/заката по местному времени
-                            long dt      = doc["dt"] | 0L;
-                            long sunrise = doc["sys"]["sunrise"] | 0L;
-                            long sunset  = doc["sys"]["sunset"] | 0L;
-                            int  tzOff   = doc["timezone"] | 0; 
-                            
-                            // Передать смещение циклу, если оно новое или ещё не известно.
-                            if (doc["timezone"].is<int>() && (!settings.hasOffset || settings.utcOffset != tzOff)) {
-                                settings.utcOffset = tzOff;
-                                settings.hasOffset = true;
-                                tzStaged[0] = '\0';          // имя зоны не меняем, только смещение
-                                tzPending   = true;          // loop() применит и сохранит
-                            }
+                        long dt      = doc["dt"] | 0L;
+                        long sunrise = doc["sys"]["sunrise"] | 0L;
+                        long sunset  = doc["sys"]["sunset"]  | 0L;
+                        bool hasTz   = doc["timezone"].is<int>();
+                        int  tzOff   = doc["timezone"] | 0;
 
-                            if (sunrise > 0 && sunset > 0) {
-                                wxIsDay   = (dt >= sunrise && dt < sunset);
-                                wxSunrise = ((sunrise + tzOff) % 86400) / 60;
-                                wxSunset  = ((sunset  + tzOff) % 86400) / 60;
-                            }
+                        if (sunrise > 0 && sunset > 0 && hasTz) {
+                            wxIsDay   = (dt >= sunrise && dt < sunset);
+                            wxSunrise = (int)(((sunrise + tzOff) % 86400) / 60);
+                            wxSunset  = (int)(((sunset  + tzOff) % 86400) / 60);
+                        }
 
-                            wxValid = true;
-                            wxErr   = 0;
-                            ok      = true;
+                        // Hand the offset to loop(), which applies it safely.
+                        if (hasTz && (!settings.hasOffset || settings.utcOffset != tzOff)) {
+                            settings.utcOffset = tzOff;
+                            settings.hasOffset = true;
+                            tzStaged[0] = '\0';
+                            tzPending   = true;
+                        }
+
+                        wxValid = true;
+                        wxErr   = 0;
+                        ok      = true;
                     }
                 }
                 http.end();
             }
         }
-        Serial.printf("WX: err=%d, hasLoc=%d, lat=%.4f, lon=%.4f\n", wxErr, settings.hasLoc, settings.lat, settings.lon);
+        Serial.printf("WX: err=%d, hasLoc=%d, lat=%.4f, lon=%.4f\n",
+                      wxErr, settings.hasLoc, settings.lat, settings.lon);
         vTaskDelay(pdMS_TO_TICKS(ok ? WX_PERIOD_MS : WX_RETRY_MS));
     }
 }
