@@ -1,0 +1,21 @@
+name: Generate Russian font
+
+on: workflow_dispatch
+
+permissions:
+  contents: write
+
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core
+      - run: pip install pillow
+      - run: python scripts/gen_font_ru.py
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add src/font_ru.h
+          git commit -m "Add Russian smooth font" || echo "no changes"
+          git push
