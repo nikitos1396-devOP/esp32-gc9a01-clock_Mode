@@ -269,7 +269,7 @@ static void weatherTask(void *)
             String url = String("http://api.openweathermap.org/data/2.5/weather?lat=" + String(settings.lat, 4))
              + "&lon=" + String(settings.lon, 4)
              + "&appid=" + OWM_KEY
-             + "&units=" + (wxUseF ? "imperial" : "metric") + "&lang=ru";
+             + "&units=" + (wxUseF ? "imperial" : "metric");
             
             WiFiClient client;
             HTTPClient http;
@@ -325,6 +325,7 @@ static void weatherTask(void *)
                                 settings.hasOffset = true;
                                 tzStaged[0] = '\0';          // имя зоны не меняем, только смещение
                                 tzPending   = true;          // loop() применит и сохранит
+                            }
 
                             if (sunrise > 0 && sunset > 0) {
                                 wxIsDay   = (dt >= sunrise && dt < sunset);
