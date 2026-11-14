@@ -209,6 +209,7 @@ static bool resolveLocation()
                 settings.locName = String((const char *)(r["name"] | "")) + ", "
                                  + (const char *)(r["country_code"] | "");
                 settings.hasLoc  = true;
+                settings.hasOffset = false;
                 settingsSave();
                 ok = true;
             }
@@ -241,6 +242,10 @@ volatile uint32_t diagWx = 0;
 // where it is written.
 static char tzStaged[64] = "";
 
+#ifndef OWM_KEY
+#error "OWM_KEY is not defined"
+#endif
+
 static void weatherTask(void *)
 {
     for (;;) {
@@ -264,11 +269,7 @@ static void weatherTask(void *)
             String url = String("http://api.openweathermap.org/data/2.5/weather?lat=" + String(settings.lat, 4))
              + "&lon=" + String(settings.lon, 4)
              + "&appid=" + OWM_KEY
-             + "&units=metric&lang=ru";
-
-#ifndef OWM_KEY
-#error "OWM_KEY is not defined"
-#endif
+             + "&units=" + (wxUseF ? "imperial" : "metric") + "&lang=ru";
             
             WiFiClient client;
             HTTPClient http;
@@ -283,8 +284,15 @@ static void weatherTask(void *)
                 if (httpCode != HTTP_CODE_OK) {
                     wxErr = 3;
                 } else {
+                    JsonDocument filter;
+                    filter["main"]["temp"] = true;
+                    filter["weather"][0]["id"] = true;
+                    filter["dt"] = true;
+                    filter["timezone"] = true;
+                    filter["sys"]["sunrise"] = true;
+                    filter["sys"]["sunset"] = true;
                     JsonDocument doc;
-                    if (deserializeJson(doc, http.getString())) {
+                    if (deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter))) {
                         wxErr = 4;
                     } else {
                         JsonObject mainObj = doc["main"];
@@ -294,7 +302,7 @@ static void weatherTask(void *)
                             wxTempF = (int)lroundf(mainObj["temp"] | 0.0f);
 
                             // Конвертируем код погоды OpenWeatherMap в коды WMO (которые ждут циферблаты)
-                            int owmId = doc["weather"]["id"] | 800;
+                            int owmId = doc["weather"][0]["id"] | 800;
                             if (owmId == 800) wxCode = 0;                       // Ясно
                             else if (owmId == 801 || owmId == 802) wxCode = 2;  // Переменная облачность
                             else if (owmId >= 803) wxCode = 3;                  // Пасмурно
@@ -309,7 +317,14 @@ static void weatherTask(void *)
                             long dt      = doc["dt"] | 0L;
                             long sunrise = doc["sys"]["sunrise"] | 0L;
                             long sunset  = doc["sys"]["sunset"] | 0L;
-                            int  tzOff   = doc["timezone"] | 25200; // для Барнаула 25200
+                            int  tzOff   = doc["timezone"] | 0; 
+                            
+                            // Передать смещение циклу, если оно новое или ещё не известно.
+                            if (doc["timezone"].is<int>() && (!settings.hasOffset || settings.utcOffset != tzOff)) {
+                                settings.utcOffset = tzOff;
+                                settings.hasOffset = true;
+                                tzStaged[0] = '\0';          // имя зоны не меняем, только смещение
+                                tzPending   = true;          // loop() применит и сохранит
 
                             if (sunrise > 0 && sunset > 0) {
                                 wxIsDay   = (dt >= sunrise && dt < sunset);
