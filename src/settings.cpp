@@ -10,15 +10,15 @@ void settingsLoad()
     p.begin(NS, true);
     settings.ssid      = p.getString("ssid", "");
     settings.pass      = p.getString("pass", "");
-    settings.locQuery  = p.getString("loc", "Barnaul");
-    settings.locName   = p.getString("locname", "Barnaul");
-    settings.tzName    = p.getString("tz", "Asia/Barnaul");
-    settings.lat       = p.getFloat("lat", 53.3548f);
-    settings.lon       = p.getFloat("lon", 83.7698f);
-    settings.hasLoc    = p.getBool("hasloc", true);
-    settings.useF      = p.getBool("useF", false);
-    settings.utcOffset = p.getInt("utcoff",25200);
-    settings.hasOffset = p.getBool("hasoff", true);
+    settings.locQuery  = p.getString("loc", "");
+    settings.locName   = p.getString("locname", "");
+    settings.tzName    = p.getString("tz", "");
+    settings.lat       = p.getFloat("lat", 0);
+    settings.lon       = p.getFloat("lon", 0);
+    settings.hasLoc    = p.getBool("hasloc", false);
+    settings.useF      = p.getBool("useF", true);
+    settings.utcOffset = p.getInt("utcoff", 0);
+    settings.hasOffset = p.getBool("hasoff", false);
     p.end();
 }
 
