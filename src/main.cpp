@@ -413,10 +413,10 @@ static void paintSetup(GfxDirect &g)
 #endif
     g.fillScreen(0x0000);
     g.setTextDatum(MC_DATUM);
-    g.setTextColor(0xFD20, 0x0000); g.drawString("WiFi setup",       120,  50, HEAD);
-    g.setTextColor(0x9CD3, 0x0000); g.drawString("join the network", 120,  82, 2);
+    g.setTextColor(0xFD20, 0x0000); g.drawString("Настройки WiFi",       120,  50, HEAD);
+    g.setTextColor(0x9CD3, 0x0000); g.drawString("Подключитесь к сети:", 120,  82, 2);
     g.setTextColor(0xFFFF, 0x0000); g.drawString(portal::AP_SSID,    120, 106, HEAD);
-    g.setTextColor(0x9CD3, 0x0000); g.drawString("then open",        120, 134, 2);
+    g.setTextColor(0x9CD3, 0x0000); g.drawString("затем перейдите на:",        120, 134, 2);
     g.setTextColor(0xFFFF, 0x0000); g.drawString("192.168.4.1",      120, 158, HEAD);
     g.setTextColor(0x7BEF, 0x0000); g.drawString(setupStatus,        120, 196, 2);
 }
@@ -429,10 +429,10 @@ static void drawSetupScreen(const char *status)
 static const char *portalStatusText(portal::State s)
 {
     switch (s) {
-        case portal::CONNECTING: return "connecting...";
-        case portal::OK:         return "connected";
-        case portal::FAIL:       return "could not join, try again";
-        default:                 return "waiting for a phone";
+        case portal::CONNECTING: return "Подключение...";
+        case portal::OK:         return "Подключено";
+        case portal::FAIL:       return "Не подключено, попробуйте ещё раз";
+        default:                 return "Ожидание подключения устройства";
     }
 }
 
@@ -457,7 +457,7 @@ static bool bootHeld()
     pinMode(BOOT_BTN, INPUT_PULLUP);
     delay(20);
     if (digitalRead(BOOT_BTN) != LOW) return false;
-    banner("Hold BOOT", "3 s to reset the WiFi setup", 0xFD20);
+    banner("ЗАЖМИТЕ КНОПКУ", "на 3 секунды для сброса настроек", 0xFD20);
     uint32_t t0 = millis();
     while (digitalRead(BOOT_BTN) == LOW) {
         if (millis() - t0 > 3000) return true;
@@ -663,7 +663,7 @@ void setup()
     }
     wxUseF = settings.useF;
 
-    banner("NTP", "syncing...", 0xE71C);
+    banner("NTP", "синхронизация...", 0xE71C);
 
     // SNTP; the IDF layer re-syncs on its own roughly hourly afterwards.
     configTzTime(tzString(CFG_TZ), "pool.ntp.org", "time.google.com", "time.nist.gov");
