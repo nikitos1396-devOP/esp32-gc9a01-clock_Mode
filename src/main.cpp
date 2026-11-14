@@ -262,11 +262,13 @@ static void weatherTask(void *)
             wxUseF = settings.useF;
 
             char url[256];
-            snprintf(url, sizeof(url),
-                     "http://api.openweathermap.org/data/2.5/weather?q=Barnaul,RU&appid=76987de907a9abab6e042e91e0e22a74&units=metric&lang=ru",
-                     OPENWEATHER_API_KEY
-            );    
+            String url = String("http://api.openweathermap.org/data/2.5/weather?q=Barnaul,RU&appid=")
+             + OWM_KEY + "&units=metric&lang=ru";
 
+#ifndef OWM_KEY
+#error "OWM_KEY is not defined"
+#endif
+            
             WiFiClient client;
             HTTPClient http;
             http.useHTTP10(true);
