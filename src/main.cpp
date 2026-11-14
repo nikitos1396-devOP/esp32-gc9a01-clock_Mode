@@ -261,7 +261,6 @@ static void weatherTask(void *)
             // the zone or offset has actually changed - see below.
             wxUseF = settings.useF;
 
-            char url[256];
             String url = String("http://api.openweathermap.org/data/2.5/weather?q=Barnaul,RU&appid=")
              + OWM_KEY + "&units=metric&lang=ru";
 
