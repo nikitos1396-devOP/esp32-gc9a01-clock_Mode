@@ -627,7 +627,7 @@ void setup()
 
     settingsLoad();
     bool startOver = bootHeld();
-    if (startOver) = seedDefaults();
+    if (startOver) seedDefaults();
 
     WiFi.mode(WIFI_STA);
     WiFi.setTxPower(WIFI_POWER_8_5dBm);
