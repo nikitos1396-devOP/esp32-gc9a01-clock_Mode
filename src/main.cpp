@@ -447,7 +447,7 @@ static bool bootHeld()
     pinMode(BOOT_BTN, INPUT_PULLUP);
     delay(20);
     if (digitalRead(BOOT_BTN) != LOW) return false;
-    banner("Зажми КНОПКУ", "на 3 секунды для сброса настроек", 0xFD20);
+    banner("Зажмите кнопку", "на 3 секунды для настройки часов", 0xFD20);
     uint32_t t0 = millis();
     while (digitalRead(BOOT_BTN) == LOW) {
         if (millis() - t0 > 3000) return true;
@@ -627,8 +627,7 @@ void setup()
 
     settingsLoad();
     bool startOver = bootHeld();
-    if (startOver) settingsClear();
-    else           seedDefaults();
+    if (startOver) = seedDefaults();
 
     WiFi.mode(WIFI_STA);
     WiFi.setTxPower(WIFI_POWER_8_5dBm);
