@@ -18,7 +18,7 @@ static uint32_t  stateAt = 0;
 static String    options;    // <option> list from the last scan
 
 static const char PAGE[] PROGMEM = R"HTML(<!doctype html><html><head><meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1"><title>Настройка часов</title>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>Clock Setup</title>
 <style>body{font-family:system-ui,sans-serif;background:#111;color:#eee;margin:0;padding:24px;max-width:420px}
 h1{font-size:22px;margin:0 0 4px}p{color:#aaa;margin:0 0 20px}label{display:block;margin:14px 0 6px;font-size:14px;color:#ccc}
 select,input[type=text],input[type=password]{width:100%;box-sizing:border-box;padding:10px;border:1px solid #444;border-radius:8px;background:#222;color:#eee;font-size:16px}
@@ -28,8 +28,8 @@ button{margin-top:22px;width:100%;padding:12px;border:0;border-radius:8px;backgr
 <form method=post action=/save>
 <label>WiFi сеть</label><select name=ssid>%OPTIONS%</select>
 <label>Или введите название сети</label><input type=text name=other autocapitalize=none autocorrect=off>
-<label>Пароль</label><input type=password name=pass>
-<label>Город (латиница) для получения погоды</label><input type=text name=loc value="%LOC%" placeholder="Например Moscow или Barnaul">
+<label>Пароль</label><input type=password name=pass placeholder="%PASSPH%">
+<label>Введите город для получения погоды</label><input type=text name=loc value="%LOC%" placeholder="Например Москва или Барнаул">
 <label>Температура</label><div class=u><label><input type=radio name=units value=f %FCHK%> &deg;F</label><label><input type=radio name=units value=c %CCHK%> &deg;C</label></div>
 <button>Сохранить и подключиться</button></form>
 <p style="margin-top:18px"><a href=/scan>Обновить список сетей</a></p>
@@ -41,8 +41,8 @@ static const char WAIT[] PROGMEM = R"HTML(<!doctype html><html><head><meta chars
 h1{font-size:22px;margin:0 0 4px}p{color:#aaa;line-height:1.4}a{color:#e8792b}</style></head><body>
 <h1>Подключение</h1><p id=s>Подключение к сети. Это может занять до 20 секунд, и ваше устройство может отключиться от сети "Clock-Setup"</p>
 <script>function poll(){fetch('/status').then(r=>r.text()).then(t=>{var s=document.getElementById('s');
-if(t.indexOf('ok')==0){s.innerHTML='Часы успешно подключились к интернету по ip='+t.slice(3)+'. Это окно закроется автоматически через пару секунд. Подключите ваше устройство обратно к своей сети WiFi.';}
-else if(t=='fail'){s.innerHTML='Не удалось подключиться к сети. Проверьте пароль <a href="/">попробуйте ещё раз</a>.';}
+if(t.indexOf('ok')==0){s.innerHTML='Часы успешно подключены к интернету с ip='+t.slice(3)+'. Это окно закроется автоматически через пару секунд. Подключите ваше устройство обратно к своей сети WiFi.';}
+else if(t=='fail'){s.innerHTML='Не удалось подключиться к сети. Проверьте пароль и <a href="/">попробуйте ещё раз</a>.';}
 else setTimeout(poll,1000);}).catch(function(){setTimeout(poll,1000);});}poll();</script></body></html>)HTML";
 
 static String htmlEscape(const String &s)
@@ -88,8 +88,20 @@ static void redirectRoot()
 
 static void sendPage()
 {
+    // Сохранённая сеть выбрана заранее. Если её нет в списке (скрытая сеть
+    // или вне зоны приёма), добавляем отдельным пунктом.
+    String opts = options;
+    if (settings.ssid.length()) {
+        String e = htmlEscape(settings.ssid);
+        String needle = "<option value=\"" + e + "\"";
+        int p = opts.indexOf(needle);
+        if (p >= 0) opts = opts.substring(0, p) + needle + " selected" + opts.substring(p + needle.length());
+        else        opts = needle + " selected>" + e + "</option>" + opts;
+    }
+
     String html = FPSTR(PAGE);
-    html.replace("%OPTIONS%", options);
+    html.replace("%OPTIONS%", opts);
+    html.replace("%PASSPH%", settings.pass.length() ? "оставьте пустым, чтобы не менять" : "");
     html.replace("%LOC%", htmlEscape(settings.locQuery));
     html.replace("%FCHK%", settings.useF ? "checked" : "");
     html.replace("%CCHK%", settings.useF ? "" : "checked");
@@ -102,12 +114,18 @@ static void handleSave()
     ssid.trim();
     if (!ssid.length()) ssid = server.arg("ssid");
     if (!ssid.length()) {
-        server.send(400, "text/plain", "A network name is required. Go back and pick or type one.");
+        server.send(400, "text/plain; charset=utf-8", "Нужно указать сеть. Вернитесь назад, выберите или введите её.");
         return;
     }
+    String pass = server.arg("pass");
+    if (!pass.length() && ssid == settings.ssid)   // та же сеть, пароль не вводили
+        pass = settings.pass; 
+    
     settings.ssid = ssid;
-    settings.pass = server.arg("pass");
+    settings.pass = pass;
+ 
 
+    
     String loc = server.arg("loc");
     loc.trim();
     if (loc != settings.locQuery) {           // new place: forget the old fix
@@ -115,6 +133,7 @@ static void handleSave()
         settings.hasLoc   = false;
         settings.locName  = "";
         settings.tzName   = "";
+        settings.hasOffset = false;
     }
     settings.useF = server.arg("units") != "c";
     settingsSave();
