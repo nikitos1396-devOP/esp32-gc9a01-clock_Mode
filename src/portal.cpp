@@ -18,7 +18,7 @@ static uint32_t  stateAt = 0;
 static String    options;    // <option> list from the last scan
 
 static const char PAGE[] PROGMEM = R"HTML(<!doctype html><html><head><meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1"><title>Clock Setup</title>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>Настройки часов</title>
 <style>body{font-family:system-ui,sans-serif;background:#111;color:#eee;margin:0;padding:24px;max-width:420px}
 h1{font-size:22px;margin:0 0 4px}p{color:#aaa;margin:0 0 20px}label{display:block;margin:14px 0 6px;font-size:14px;color:#ccc}
 select,input[type=text],input[type=password]{width:100%;box-sizing:border-box;padding:10px;border:1px solid #444;border-radius:8px;background:#222;color:#eee;font-size:16px}
@@ -73,11 +73,11 @@ static void scan()
         String e = htmlEscape(s);
         if (options.indexOf("value=\"" + e + "\"") >= 0) continue;   // same SSID, other AP
         options += "<option value=\"" + e + "\">" + e;
-        if (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) options += " (open)";
+        if (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) options += " (открытая)";
         options += "</option>";
     }
     WiFi.scanDelete();
-    if (!options.length()) options = "<option value=\"\">(none found, type one below)</option>";
+    if (!options.length()) options = "<option value=\"\">(сети не найдены, введите название ниже)</option>";
 }
 
 static void redirectRoot()
