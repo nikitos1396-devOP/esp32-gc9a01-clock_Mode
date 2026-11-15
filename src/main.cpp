@@ -735,10 +735,7 @@ void loop()
     bool curBootState = digitalRead(9);
     if (lastBootState == HIGH && curBootState == LOW && (millis() - lastBootMs > 250)) {
         lastBootMs = millis();
-        faceIdx = (faceIdx + 1) % ROTATION_N;
-        activeFace = ROTATION[faceIdx];
-        screenInvalidate();
-        screenClear(activeFace->background());
+        showFace((faceIdx + 1) % ROTATION_N);
     }
     lastBootState = curBootState;
 
