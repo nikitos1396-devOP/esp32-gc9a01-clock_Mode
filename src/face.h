@@ -152,10 +152,10 @@ inline int handBoxes(int cx, int cy, float back, float len, float ang,
 
 // One per faces/*.cpp.
 extern const FaceVTable FACE_DEFAULT, FACE_CASIO, FACE_MOSAIC,
-                        FACE_RETRO, FACE_DOTMATRIX, FACE_WORD, FACE_PULSAR,
+                        FACE_RETRO, FACE_DOTMATRIX, FACE_PULSAR,
                         FACE_PCB, FACE_CLASSIC, FACE_MODERN, FACE_PANEL,
                         FACE_DELOREAN, FACE_CALIFORNIA, FACE_OUTRUN,
-                        FACE_NIXIE, FACE_ORBIT;
+                        FACE_NIXIE;
 
 // The active face, and how long each is shown before rotating.
 extern const FaceVTable *activeFace;
@@ -227,18 +227,19 @@ inline void wxCloud(GFX &g, int x, int y, uint16_t c, int grow = 0)
     g.fillRect(x - 6 - grow, y + 2 - grow, 12 + 2 * grow, 5 + 2 * grow, c);
 }
 
-// A short word for a condition, for faces that print it rather than draw it.
-// Kept to eight characters so it fits a small panel at font 2.
+// Короткое слово для погоды. Кириллица в UTF-8 занимает 2 байта на букву,
+// но функция возвращает обычную строку, так что длину буферов это затрагивает
+// только там, где слово копируется в массив char.
 inline const char *wxName(WxIcon ic)
 {
     switch (ic) {
-        case WX_CLEAR:  return "CLEAR";
-        case WX_PARTLY: return "PARTLY";
-        case WX_CLOUD:  return "CLOUDY";
-        case WX_FOG:    return "FOG";
-        case WX_RAIN:   return "RAIN";
-        case WX_SNOW:   return "SNOW";
-        case WX_STORM:  return "STORM";
+        case WX_CLEAR:  return "ЯСНО";
+        case WX_PARTLY: return "ПЕРЕМ.";
+        case WX_CLOUD:  return "ПАСМУРНО";
+        case WX_FOG:    return "ТУМАН";
+        case WX_RAIN:   return "ДОЖДЬ";
+        case WX_SNOW:   return "СНЕГ";
+        case WX_STORM:  return "ГРОЗА";
         default:        return "--";
     }
 }
