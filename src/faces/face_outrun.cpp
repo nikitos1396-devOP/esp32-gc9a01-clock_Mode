@@ -22,6 +22,8 @@
 // ---------------------------------------------------------------------------
 #include "../face.h"
 #include <WiFi.h>
+extern const uint8_t FontRu[];
+extern const uint8_t FontRuSmall[];
 
 namespace face_outrun {
 
@@ -240,15 +242,18 @@ static void render(GFX &g, const struct tm &t, float subSec)
     // the reference has the weekday and date sitting between two rules, and
     // a full box round it turned into a pair of bright end caps that read as
     // part of the type.
-    static const char *WD[7] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
+    static const char *WD[7] = { "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС" };
     g.fillRoundRect(CX - 56, 30, 112, 20, 4, pal.panel);
     g.drawFastHLine(CX - 52, 30,      104, pal.label);
     g.drawFastHLine(CX - 52, 30 + 19, 104, pal.label);
+
+    g.loadFont(FontRuSmall);
     g.setTextDatum(MC_DATUM);
     g.setTextColor(pal.ink, pal.panel);
-    char buf[16];
-    snprintf(buf, sizeof buf, "%s  %d", WD[t.tm_wday % 7], t.tm_mday);
-    g.drawString(buf, CX, 40, 2);
+    char buf[24];
+    snprintf(buf, sizeof buf, "%s  %d", WD[(t.tm_wday + 6) % 7], t.tm_mday);
+    g.drawString(buf, CX, 40);
+    g.unloadFont();
 
     // the time, big, 24 hour like every digital face here
     const int DW = 26, DH = 42, GAP = 5;
@@ -270,22 +275,14 @@ static void render(GFX &g, const struct tm &t, float subSec)
     panel(g, 48, 176, 66, 28);
     panel(g, 124, 176, 66, 28);
 
+    g.loadFont(FontRuSmall);
     g.setTextDatum(MC_DATUM);
     g.setTextColor(pal.ink, pal.panel);
-    if (wxValid) snprintf(buf, sizeof buf, "%d%c", wxTempF, 0xB0);
+    if (wxValid) snprintf(buf, sizeof buf, "%d\xC2\xB0", wxTempF);
     else         strcpy(buf, "--");
-    // Font 2, not 4: a 26 px glyph in a 28 px panel touches both rules.
-    g.drawString(buf, 81, 186, 2);
-    g.setTextColor(pal.label, pal.panel);
-    g.drawString("WEATHER", 81, 197, 1);
-
-    // The sky in a word, rather than a signal strength: this face is a
-    // picture of the weather, so the panel beside the temperature may as
-    // well say what it is.
-    g.setTextColor(pal.ink, pal.panel);
-    g.drawString(wxValid ? wxName(iconForCode(wxCode)) : "--", 157, 186, 2);
-    g.setTextColor(pal.label, pal.panel);
-    g.drawString("CONDITIONS", 157, 197, 1);
+    g.drawString(buf, 81, 190);
+    g.drawString(wxValid ? wxName(iconForCode(wxCode)) : "--", 157, 190);
+    g.unloadFont();
 }
 
 static void faceRender(TFT_eSprite &g, const struct tm &t, float sub) { render(g, t, sub); }
