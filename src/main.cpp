@@ -21,6 +21,7 @@
 #include "portal.h"
 #include "tz.h"
 #include "font_ru.h"
+#include "font_ru_small.h"
 #ifdef AMOLED_C6
 #include "c6/touch.h"
 #include "c6/audio.h"
