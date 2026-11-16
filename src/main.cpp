@@ -402,10 +402,10 @@ static void paintSetup(GfxDirect &g)
     g.fillScreen(0x0000);
     g.setTextDatum(MC_DATUM);
     g.loadFont(FontRu);
-    g.setTextColor(0xFD20, 0x0000); g.drawString("Настройка WiFi",    120,  50);
-    g.setTextColor(0x9CD3, 0x0000); g.drawString("Подключись к сети", 120,  82);
+    g.setTextColor(0xFD20, 0x0000); g.drawString("Настройка часов",    120,  50);
+    g.setTextColor(0x9CD3, 0x0000); g.drawString("Подключитесь к сети:", 120,  82);
     g.setTextColor(0xFFFF, 0x0000); g.drawString(portal::AP_SSID,     120, 106);
-    g.setTextColor(0x9CD3, 0x0000); g.drawString("и открой",          120, 134);
+    g.setTextColor(0x9CD3, 0x0000); g.drawString("и откройте:",          120, 134);
     g.setTextColor(0xFFFF, 0x0000); g.drawString("192.168.4.1",       120, 158);
     g.setTextColor(0x7BEF, 0x0000); g.drawString(setupStatus,         120, 196);
     g.unloadFont();
@@ -447,7 +447,7 @@ static bool bootHeld()
     pinMode(BOOT_BTN, INPUT_PULLUP);
     delay(20);
     if (digitalRead(BOOT_BTN) != LOW) return false;
-    banner("Зажмите кнопку", "на 3 секунды для настройки часов", 0xFD20);
+    banner("Зажмите кнопку", "на 3 секунды", "для настройки часов", 0xFD20);
     uint32_t t0 = millis();
     while (digitalRead(BOOT_BTN) == LOW) {
         if (millis() - t0 > 3000) return true;
