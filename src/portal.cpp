@@ -29,7 +29,7 @@ button{margin-top:22px;width:100%;padding:12px;border:0;border-radius:8px;backgr
 <label>WiFi сеть</label><select name=ssid>%OPTIONS%</select>
 <label>Или введите название сети</label><input type=text name=other autocapitalize=none autocorrect=off>
 <label>Пароль</label><input type=password name=pass placeholder="%PASSPH%">
-<label>Введите город для получения погоды</label><input type=text name=loc value="%LOC%" placeholder="Например Москва или Барнаул">
+<label>Введите город для получения погоды. Попробуйте на английском, если город найден не верно.</label><input type=text name=loc value="%LOC%" placeholder="Например Москва или Barnaul">
 <label>Температура</label><div class=u><label><input type=radio name=units value=f %FCHK%> &deg;F</label><label><input type=radio name=units value=c %CCHK%> &deg;C</label></div>
 <button>Сохранить и подключиться</button></form>
 <p style="margin-top:18px"><a href=/scan>Обновить список сетей</a></p>
@@ -39,7 +39,7 @@ static const char WAIT[] PROGMEM = R"HTML(<!doctype html><html><head><meta chars
 <meta name=viewport content="width=device-width,initial-scale=1"><title>Подключение</title>
 <style>body{font-family:system-ui,sans-serif;background:#111;color:#eee;margin:0;padding:24px;max-width:420px}
 h1{font-size:22px;margin:0 0 4px}p{color:#aaa;line-height:1.4}a{color:#e8792b}</style></head><body>
-<h1>Подключение</h1><p id=s>Подключение к сети. Это может занять до 20 секунд, и ваше устройство может отключиться от сети "Clock-Setup"</p>
+<h1>Подключение</h1><p id=s>Подключение к сети. Это может занять до 20 секунд. Ваше устройство может отключиться от сети "Clock-Setup"</p>
 <script>function poll(){fetch('/status').then(r=>r.text()).then(t=>{var s=document.getElementById('s');
 if(t.indexOf('ok')==0){s.innerHTML='Часы успешно подключены к интернету с ip='+t.slice(3)+'. Это окно закроется автоматически через пару секунд. Подключите ваше устройство обратно к своей сети WiFi.';}
 else if(t=='fail'){s.innerHTML='Не удалось подключиться к сети. Проверьте пароль и <a href="/">попробуйте ещё раз</a>.';}
@@ -146,9 +146,9 @@ static void handleSave()
 
 static void handleStatus()
 {
-    String s = (st == OK)   ? "ok " + WiFi.localIP().toString()
-             : (st == FAIL) ? "fail"
-             :                "connecting";
+    String s = (st == OK)   ? "ок" + WiFi.localIP().toString()
+             : (st == FAIL) ? "ошибка"
+             :                "подключение";
     server.send(200, "text/plain", s);
 }
 
