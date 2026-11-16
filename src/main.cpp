@@ -107,10 +107,10 @@ static const FaceVTable *const ROTATION[] = {
     // retro for three hours.
     &FACE_RETRO,
 #else
-    &FACE_WORD, &FACE_RETRO, &FACE_DOTMATRIX, &FACE_PULSAR, &FACE_PCB,
+    &FACE_RETRO, &FACE_DOTMATRIX, &FACE_PULSAR, &FACE_PCB,
     &FACE_CASIO, &FACE_MOSAIC, &FACE_DEFAULT, &FACE_CLASSIC, &FACE_MODERN,
     &FACE_PANEL, &FACE_DELOREAN, &FACE_CALIFORNIA, &FACE_OUTRUN,
-    &FACE_NIXIE, &FACE_ORBIT,
+    &FACE_NIXIE,
 #endif
 };
 static const int      ROTATION_N = sizeof(ROTATION) / sizeof(ROTATION[0]);
