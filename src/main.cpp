@@ -372,7 +372,7 @@ static void parkOnboardLed()
 
 // Centred boot/status message. Static screens go through screenPaint() so
 // the band renderer on the AMOLED can draw them piecewise.
-static const char *bannerL1, *bannerL2;
+static const char *bannerL1, *bannerL2, *bannerL3;
 static uint16_t    bannerCol;
 static void paintBanner(GfxDirect &g)
 {
@@ -380,18 +380,25 @@ static void paintBanner(GfxDirect &g)
     g.fillScreen(bg);
     g.setTextDatum(MC_DATUM);
     g.loadFont(FontRu);
+
+    // С третьей строкой блок сдвигается вверх, чтобы остаться по центру.
+    int y = bannerL3 ? 84 : 108;
     g.setTextColor(bannerCol, bg);
-    g.drawString(bannerL1, 120, 108);
-    if (bannerL2) {
-        g.setTextColor(0x7BEF, bg);
-        g.drawString(bannerL2, 120, 138);
-    }
+    g.drawString(bannerL1, 120, y);
+    g.setTextColor(0x7BEF, bg);
+    if (bannerL2) g.drawString(bannerL2, 120, y + 30);
+    if (bannerL3) g.drawString(bannerL3, 120, y + 60);
+
     g.unloadFont();
+}
+static void banner(const char *line1, const char *line2, const char *line3, uint16_t color)
+{
+    bannerL1 = line1; bannerL2 = line2; bannerL3 = line3; bannerCol = color;
+    screenPaint(paintBanner);
 }
 static void banner(const char *line1, const char *line2, uint16_t color)
 {
-    bannerL1 = line1; bannerL2 = line2; bannerCol = color;
-    screenPaint(paintBanner);
+    banner(line1, line2, nullptr, color);
 }
 
 // What to do while the hotspot is up: the network to join, the address to
