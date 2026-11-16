@@ -1,7 +1,10 @@
 import struct
+import sys
 from PIL import Image, ImageDraw, ImageFont
 
-SIZE = 18
+SIZE = int(sys.argv[1])      # размер в пикселях
+NAME = sys.argv[2]           # имя массива в коде
+OUT  = sys.argv[3]           # куда писать заголовок
 FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 font = ImageFont.truetype(FONT_PATH, SIZE)
@@ -10,7 +13,7 @@ ascent, descent = font.getmetrics()
 codes = set(range(0x20, 0x7F))           # ASCII
 codes |= set(range(0x410, 0x450))        # А-я
 codes |= {0x401, 0x451, 0xB0}            # Ё, ё, °
-codes = sorted(codes)                    # TFT_eSPI ищет двоичным поиском
+codes = sorted(codes)
 
 meta, bitmaps = [], []
 for cp in codes:
@@ -33,10 +36,11 @@ for m in meta:
     out += struct.pack(">7i", *m)
 out += b"".join(bitmaps)
 
-with open("src/font_ru.h", "w") as f:
+with open(OUT, "w") as f:
     f.write("#pragma once\n#include <Arduino.h>\n")
-    f.write("static const uint8_t FontRu[] PROGMEM = {\n")
+    f.write("extern const uint8_t %s[];\n" % NAME)
+    f.write("const uint8_t %s[] PROGMEM = {\n" % NAME)
     for i in range(0, len(out), 16):
         f.write("  " + ", ".join("0x%02X" % x for x in out[i:i+16]) + ",\n")
     f.write("};\n")
-print("font bytes:", len(out))
+print(NAME, "bytes:", len(out))
