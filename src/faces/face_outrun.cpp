@@ -288,13 +288,4 @@ static void render(GFX &g, const struct tm &t, float subSec)
 static void faceRender(TFT_eSprite &g, const struct tm &t, float sub) { render(g, t, sub); }
 static void faceRender(TFT_eSPI    &g, const struct tm &t, float sub) { render(g, t, sub); }
 
-} // namespace face_outrun
-
-const FaceVTable FACE_OUTRUN = {
-    "outrun",
-    face_outrun::faceInit,
-    face_outrun::faceBackground,
-    face_outrun::faceSmooth,
-    (void(*)(TFT_eSprite&, const struct tm&, float))face_outrun::faceRender,
-    (void(*)(TFT_eSPI&,    const struct tm&, float))face_outrun::faceRender,
 };
