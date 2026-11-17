@@ -20,6 +20,7 @@
 // ---------------------------------------------------------------------------
 #include "../face.h"
 #include <WiFi.h>
+extern const uint8_t FontRuSmall[];
 
 namespace face_panel {
 
@@ -220,6 +221,10 @@ static void hhmm(char *out, int minutes)
 template <typename GFX>
 static void render(GFX &g, const struct tm &t, float)
 {
+    static const char *WD[7]   = { "ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ" };   // индекс = tm_wday
+    static const char *MON[12] = { "ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН",
+                                   "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК" };
+
     bool night = isNightNow(t);
     P_COL = night ? C_PANEL_N : C_PANEL_D;
     G_COL = night ? C_GHOST_N : C_GHOST_D;
@@ -232,33 +237,7 @@ static void render(GFX &g, const struct tm &t, float)
 
     char buf[16];
 
-    // ---- maker's mark ------------------------------------------------------
-    g.setTextDatum(TC_DATUM);
-    g.setTextColor(C_TEXT, C_BG);
-    g.drawString("ESP32", 120, 18, 1);
-
-    // ---- top row: sunrise | temperature ------------------------------------
-    panel(g, 40, 30, 76, 32);
-    hhmm(buf, wxSunrise);
-    segText(g, buf, 40 + (76 - segWidth(buf, 8, 2, 2)) / 2 - 6, 33, 8, 12, 2, 2);
-    label(g, "SUNRISE", 70, 44);
-    sunHalf(g, 106, 51, true);
-
-    panel(g, 124, 30, 76, 32);
-    if (wxValid) snprintf(buf, sizeof buf, "%d", wxTempF); else strcpy(buf, "--");
-    {
-        int w = segWidth(buf, 10, 2, 2);
-        int x = 124 + (76 - w - 18) / 2;
-        segText(g, buf, x, 33, 10, 14, 2, 2);
-        g.setTextDatum(TL_DATUM);
-        g.setTextColor(C_INK, P_COL);
-        g.drawCircle(x + w + 4, 35, 2, C_INK);
-        g.drawString(wxUnit(), x + w + 8, 32, 2);
-    }
-    label(g, "TEMP", 152, 46);
-    thermometer(g, 186, 52);
-
-    // ---- day-progress scale ------------------------------------------------
+    // ---- day-progress scale (мелкий встроенный шрифт 1, рисуем до русского) ----
     g.drawFastHLine(48, 77, 144, C_BAR);
     static const int PCT[5] = {0, 30, 50, 70, 100};
     static const char *PCTS[5] = {"0", "30", "50", "70", "100"};
@@ -278,7 +257,31 @@ static void render(GFX &g, const struct tm &t, float)
         g.fillTriangle(x - 4, 66, x + 4, 66, x, 73, C_RED);
     }
 
-    // ---- second row: signal | month/day | moon | date ----------------------
+    // Дальше весь текст русским шрифтом: один раз загрузили, в конце выгрузим.
+    g.loadFont(FontRuSmall);
+
+    // ---- top row: sunrise | temperature ------------------------------------
+    panel(g, 40, 30, 76, 32);
+    hhmm(buf, wxSunrise);
+    segText(g, buf, 40 + (76 - segWidth(buf, 8, 2, 2)) / 2 - 6, 33, 8, 12, 2, 2);
+    label(g, "ВОСХОД", 70, 44);
+    sunHalf(g, 106, 51, true);
+
+    panel(g, 124, 30, 76, 32);
+    if (wxValid) snprintf(buf, sizeof buf, "%d", wxTempF); else strcpy(buf, "--");
+    {
+        int w = segWidth(buf, 10, 2, 2);
+        int x = 124 + (76 - w - 18) / 2;
+        segText(g, buf, x, 33, 10, 14, 2, 2);
+        g.setTextDatum(TL_DATUM);
+        g.setTextColor(C_INK, P_COL);
+        g.drawCircle(x + w + 4, 35, 2, C_INK);
+        g.drawString(wxUnit(), x + w + 8, 32);
+    }
+    label(g, "ТЕМП", 152, 46);
+    thermometer(g, 186, 52);
+
+    // ---- second row: signal | weekday | moon | date ------------------------
     panel(g, 30, 84, 38, 34);
     int sig = wifiLevel();
     signalBars(g, 40, 97, sig);
@@ -289,41 +292,29 @@ static void render(GFX &g, const struct tm &t, float)
         segText(g, buf, x, 101, 8, 12, 2, 2);
         g.setTextDatum(TL_DATUM);
         g.setTextColor(C_INK, P_COL);
-        g.drawString("%", x + w + 2, 99, 2);
+        g.drawString("%", x + w + 2, 99);
     }
 
     panel(g, 72, 84, 40, 34);
-    strftime(buf, sizeof buf, "%a", &t);
-    for (char *p = buf; *p; p++) *p = toupper((unsigned char)*p);
-    label(g, buf, 92, 86);
-    label(g, "DAY", 92, 102, TC_DATUM, 1);
+    label(g, WD[t.tm_wday % 7], 92, 101, MC_DATUM);
 
     moon(g, 132, 101, 11, moonPhase8(time(nullptr)));
 
-    // the date: day in segments, month spelled out under it
     panel(g, 150, 84, 58, 34);
     snprintf(buf, sizeof buf, "%02d", t.tm_mday);
     segText(g, buf, 158, 87, 10, 17, 2, 3);
-    strftime(buf, sizeof buf, "%b", &t);
-    for (char *p = buf; *p; p++) *p = toupper((unsigned char)*p);
-    label(g, buf, 179, 104);
+    label(g, MON[t.tm_mon % 12], 179, 104);
 
     // ---- the time ----------------------------------------------------------
     g.setTextDatum(TC_DATUM);
-    g.setTextColor(G_COL, C_BG);                 // PA and the bell: ghosted (24h, no alarm)
-    g.drawString("PA", 43, 124, 2);
     g.setTextColor(C_TEXT, C_BG);
-    g.drawString("24H", 43, 143, 2);
+    g.drawString("24Ч", 43, 143);
     bell(g, 43, 168, 0x4208);
 
     snprintf(buf, sizeof buf, "%02d:%02d", t.tm_hour, t.tm_min);
-    // big digits sit on the dark ground with their own panel
     panel(g, 58, 124, 130, 52);
-    // The colon ticks on the second. It drops to the panel colour rather
-    // than vanishing, so the digits either side do not appear to shift.
     segText(g, buf, 62, 128, 24, 44, 5, 6,
             (t.tm_sec & 1) ? (int)C_INK : (int)P_COL);
-    // seconds, small, with the weather above them
     panel(g, 190, 124, 30, 52);
     snprintf(buf, sizeof buf, "%02d", t.tm_sec);
     segText(g, buf, 194, 154, 10, 18, 2, 3);
@@ -333,16 +324,16 @@ static void render(GFX &g, const struct tm &t, float)
     panel(g, 44, 180, 74, 30);
     hhmm(buf, wxSunset);
     segText(g, buf, 44 + (74 - segWidth(buf, 8, 2, 2)) / 2 - 6, 183, 8, 12, 2, 2);
-    label(g, "SUNSET", 74, 194);
+    label(g, "ЗАКАТ", 74, 194);
     sunHalf(g, 108, 200, false);
 
     panel(g, 122, 180, 74, 30);
     if (wxSunrise >= 0 && wxSunset > wxSunrise) hhmm(buf, wxSunset - wxSunrise);
     else strcpy(buf, "--:--");
     segText(g, buf, 122 + (74 - segWidth(buf, 8, 2, 2)) / 2, 183, 8, 12, 2, 2);
-    label(g, "DAYLIGHT", 159, 194);
+    label(g, "ДЕНЬ", 159, 194);
 
-    // ---- foot: GMT offset, TIMEZONE, the star rows ------------------------
+    // ---- foot: только смещение от GMT --------------------------------------
     {
         time_t now = time(nullptr);
         struct tm lt, ut;
@@ -354,13 +345,9 @@ static void render(GFX &g, const struct tm &t, float)
     }
     g.setTextDatum(TC_DATUM);
     g.setTextColor(P_COL, C_BG);
-    g.drawString(buf, 120, 213, 2);
-    g.setTextColor(C_YELLOW, C_BG);
-    g.drawString("TIMEZONE", 120, 230, 1);
-    for (int i = 0; i < 5; i++) {
-        g.fillCircle(66 + i * 5, 224, 1, C_BAR);
-        g.fillCircle(154 + i * 5, 224, 1, C_BAR);
-    }
+    g.drawString(buf, 120, 216);
+
+    g.unloadFont();
 }
 
 static void faceRender(TFT_eSprite &g, const struct tm &t, float sub) { render(g, t, sub); }
