@@ -12,6 +12,8 @@
 // ---------------------------------------------------------------------------
 #include "../face.h"
 #include <string.h>
+extern const uint8_t FontRu[];
+extern const uint8_t FontRuSmall[];
 
 // Wrapped in its own namespace so every face can be linked into the same
 // binary: each defines faceInit/faceRender/faceBackground/faceSmooth, which
@@ -143,7 +145,7 @@ static void render(GFX &g, const struct tm &t, float subSec)
     }
 
     // captions outside the array
-    static const char *DAYS[7] = { "SUN","MON","TUE","WED","THU","FRI","SAT" };
+    static const char *DAYS[7]  = { "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС" };
     snprintf(buf, sizeof(buf), "%s %d", DAYS[t.tm_wday % 7], t.tm_mday);
     g.setTextDatum(TC_DATUM);
     g.setTextColor(timeValid ? C_TEXT : C_LABEL, C_GLASS);
@@ -154,9 +156,11 @@ static void render(GFX &g, const struct tm &t, float subSec)
         // next to 63 px of digits. Sits at y=6, not 12: font 4 is 26 px tall
         // and the top dot row starts at y=33, so anything lower runs into it.
         snprintf(buf, sizeof(buf), "%d", wxTempF);
+        g.loadFont(FontRu);
         g.setTextDatum(TC_DATUM);
         g.setTextColor(C_TEXT, C_GLASS);
         g.drawString(buf, 112, 6, 4);
+        g.unloadFont();
         int w = g.textWidth(buf, 4);
         g.drawCircle(112 + w / 2 + 8, 11, 3, C_TEXT);
         g.setTextDatum(TL_DATUM);
