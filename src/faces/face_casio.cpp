@@ -538,18 +538,6 @@ static void render(GFX &g, const struct tm &t, float subSec)
     maskToCircle(g, R_MASK, th.shell);
 }
 
-    // ---- DAY / weather ----------------------------------------------------
-    // No caption: three letters in the bottom-right cell are unambiguous, and
-    // dropping it lets the day name sit on the cell's visible centre.
-    seg14Word(g, DAY_NAMES[t.tm_wday % 7], B_DAY.cx, B_DAY.cy,
-              16, 26, 3, 3, th.ink, th.ghost, th.panel);
-
-    wxIconMono(g, B_WX.cx, B_WX.cy, wxValid ? iconForCode(wxCode) : WX_UNKNOWN,
-               wxIsDay, th.ink, th.panel);
-
-    maskToCircle(g, R_MASK, th.shell);
-}
-
 static void faceRender(TFT_eSprite &g, const struct tm &t, float sub) { render(g, t, sub); }
 static void faceRender(TFT_eSPI    &g, const struct tm &t, float sub) { render(g, t, sub); }
 
