@@ -20,6 +20,7 @@
 //  a fixed 48 px and has no concept of an unlit segment.
 // ---------------------------------------------------------------------------
 #include "../face.h"
+extern const uint8_t FontRuSmall[];
 
 // Wrapped in its own namespace so every face can be linked into the same
 // binary: each defines faceInit/faceRender/faceBackground/faceSmooth, which
@@ -410,18 +411,48 @@ static void seg7PairC(GFX &g, int cx, int y, int w, int h, int t, int gap,
     seg7Pair(g, cx - (2 * w + gap) / 2, y, w, h, t, gap, v, on, off);
 }
 
-static const char *DAY_NAMES[7] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
+// Cyrillic letters as 14-segment masks (bit layout as in seg14 above).
+#define RU_P  0x0037   // П
+#define RU_O  0x003F   // О
+#define RU_N  0x00F6   // Н
+#define RU_V  0x128F   // В
+#define RU_T  0x1201   // Т
+#define RU_S  0x0039   // С
+#define RU_R  0x00F3   // Р
+#define RU_E  0x00F9   // Е
+#define RU_CH 0x00E6   // Ч
+#define RU_YA 0x08E7   // Я
+#define RU_U  0x1500   // У
+#define RU_B  0x00FD   // Б
+
+// Неделя с понедельника: индекс = (tm_wday + 6) % 7
+static const uint16_t DAY_MASKS[7][3] = {
+    {RU_P,  RU_O,  RU_N},   // ПОН
+    {RU_V,  RU_T,  RU_O},   // ВТО
+    {RU_S,  RU_R,  RU_E},   // СРЕ
+    {RU_CH, RU_E,  RU_T},   // ЧЕТ
+    {RU_P,  RU_YA, RU_T},   // ПЯТ
+    {RU_S,  RU_U,  RU_B},   // СУБ
+    {RU_V,  RU_O,  RU_S},   // ВОС
+};
+
+template <typename GFX>
+static void seg14Triple(GFX &g, const uint16_t *m, int cx, int cy,
+                        int dw, int dh, int dt, int gap,
+                        uint16_t on, uint16_t off, uint16_t bg)
+{
+    int x = cx - (3 * dw + 2 * gap) / 2;
+    int y = cy - dh / 2;
+    for (int i = 0; i < 3; i++)
+        seg14(g, x + i * (dw + gap), y, dw, dh, dt, m[i], on, off, bg);
+}
 
 // ---- the face -------------------------------------------------------------
 template <typename GFX>
 static void render(GFX &g, const struct tm &t, float subSec)
 {
-    // Hard pixels: this is an LCD watch, and anti-aliasing its type both
-    // softens what should be blocky and costs a lot on a face that draws
-    // this much text - enough that the once-a-second redraw was falling
-    // behind and the display looked like it updated every few seconds.
     textSmooth(g, false);
-    (void)subSec;                       // a segmented display does not sweep
+    (void)subSec;
     const bool   night = isNightNow(t);
     const Theme &th    = night ? NIGHT_T : DAY_T;
     nightCache = night;
@@ -435,13 +466,15 @@ static void render(GFX &g, const struct tm &t, float subSec)
     drawCell(g, POLY_DAY,  4, th);
     drawCell(g, POLY_WX,   4, th);
 
+    // Русский текст: один раз за кадр загружаем мелкий шрифт и держим
+    // его до конца блока SECONDS.
+    g.loadFont(FontRuSmall);
+
     // ---- TEMP -------------------------------------------------------------
-    // Everything below is anchored to a measured visible centre, never to a
-    // raw polygon coordinate: the crop moves each cell's apparent middle.
     {
-        char lab[12];
-        if (wxValid) strcpy(lab, "TEMP");
-        else         snprintf(lab, sizeof(lab), "TEMP E%d", (int)wxErr);
+        char lab[24];
+        if (wxValid) strcpy(lab, "ТЕМП");
+        else         snprintf(lab, sizeof(lab), "ТЕМП E%d", (int)wxErr);
         labelC(g, lab, B_TEMP.cx, B_TEMP.cy - 24, th, 2);
 
         const int dw = 18, dh = 24, dt = 4, dg = 3;
@@ -451,39 +484,34 @@ static void render(GFX &g, const struct tm &t, float subSec)
         else           { n = 2; digits[0] = (av / 10) % 10; digits[1] = av % 10; }
 
         int wsum  = n * dw + (n - 1) * dg;
-        int left  = B_TEMP.cx - (wsum + 14) / 2;   // digits + degree ring + F
+        int left  = B_TEMP.cx - (wsum + 14) / 2;
         int dy    = B_TEMP.cy - 4;
 
         for (int i = 0; i < n; i++)
             seg7(g, left + i * (dw + dg), dy, dw, dh, dt,
                  wxValid ? digits[i] : -1, th.ink, th.ghost);
 
-        // degree ring + F, because the built-in fonts have no degree glyph
         g.drawCircle(left + wsum + 6, dy + 4, 3, th.ink);
         label(g, wxUnit(), left + wsum + 2, dy + 9, th, 2);
     }
 
     // ---- DATE -------------------------------------------------------------
-    labelC(g, "DATE", B_DATE.cx, B_DATE.cy - 26, th, 2);
+    labelC(g, "ДАТА", B_DATE.cx, B_DATE.cy - 26, th, 2);
     seg7PairC(g, B_DATE.cx, B_DATE.cy - 6, 16, 24, 4, 3,
               t.tm_mday, th.ink, th.ghost);
 
     // ---- SECONDS band -----------------------------------------------------
-    // A wide, short band: caption hard left, value hard right.
-    label(g, "SECONDS", B_SEC.x0 + 16, B_SEC.cy - 8, th, 2);
+    label(g, "СЕКУНДЫ", B_SEC.x0 + 16, B_SEC.cy - 8, th, 2);
+    g.unloadFont();                       // дальше шрифт не нужен
+
     seg7Pair(g, B_SEC.x1 - 46, B_SEC.cy - 9, 14, 18, 3, 2,
              t.tm_sec, th.ink, th.ghost);
 
-    // WiFi/NTP indicator lives in the gap between this band's caption and its
-    // digits. It used to sit on the case above the top row, which made that
-    // margin read as dead space.
     g.fillSmoothCircle(B_SEC.cx + 6, B_SEC.cy, 3, statusCol, th.panel);
     if (!useSprite)
         g.fillSmoothCircle(B_SEC.cx - 10, B_SEC.cy, 3, C_DIRECT, th.panel);
 
     // ---- TIME (24 hour) ---------------------------------------------------
-    // No caption here: the time is self-evident and the cell reads better
-    // with the digits centred in it rather than pushed down by a label.
     {
         const int dw = 40, dh = 46, dt = 7, dg = 5, cw = 7;
         int total = 4 * dw + 4 * dg + cw;
@@ -492,10 +520,6 @@ static void render(GFX &g, const struct tm &t, float subSec)
 
         seg7Pair(g, x, dy, dw, dh, dt, dg, t.tm_hour, th.ink, th.ghost);
 
-        // The colon blinks on the second, as the original does. It drops to
-        // the ghost colour rather than disappearing: on a real LCD an unlit
-        // segment is still faintly there, and blanking it entirely makes the
-        // digits look like they have shifted.
         int cx = x + 2 * dw + 2 * dg;
         uint16_t colc = (t.tm_sec & 1) ? th.ink : th.ghost;
         g.fillRect(cx, dy + 12,      cw, cw, colc);
@@ -503,6 +527,16 @@ static void render(GFX &g, const struct tm &t, float subSec)
 
         seg7Pair(g, cx + cw + dg, dy, dw, dh, dt, dg, t.tm_min, th.ink, th.ghost);
     }
+
+    // ---- DAY / weather ----------------------------------------------------
+    seg14Triple(g, DAY_MASKS[(t.tm_wday + 6) % 7], B_DAY.cx, B_DAY.cy,
+                16, 26, 3, 3, th.ink, th.ghost, th.panel);
+
+    wxIconMono(g, B_WX.cx, B_WX.cy, wxValid ? iconForCode(wxCode) : WX_UNKNOWN,
+               wxIsDay, th.ink, th.panel);
+
+    maskToCircle(g, R_MASK, th.shell);
+}
 
     // ---- DAY / weather ----------------------------------------------------
     // No caption: three letters in the bottom-right cell are unambiguous, and
