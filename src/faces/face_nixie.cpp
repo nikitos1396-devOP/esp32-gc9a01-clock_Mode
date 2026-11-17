@@ -23,6 +23,8 @@
 //  seven-segment shape reads as an LED clock rather than a tube.
 // ---------------------------------------------------------------------------
 #include "../face.h"
+extern const uint8_t FontRu[];
+extern const uint8_t FontRuSmall[];
 
 namespace face_nixie {
 
@@ -168,18 +170,20 @@ static void render(GFX &g, const struct tm &t, float subSec)
 
     // The chassis printing: date on the left, weather on the right, with a
     // rule between them. Small caps, the way instrument panels are labelled.
-    static const char *WD[7] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
-    static const char *MO[12] = { "JAN","FEB","MAR","APR","MAY","JUN",
-                                  "JUL","AUG","SEP","OCT","NOV","DEC" };
+static const char *DAYS[7]  = { "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС" };   // с понедельника
+static const char *MONS[12] = { "ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН",
+                                "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК" };
     char buf[24];
 
     g.drawFastHLine(38, 146, 164, C_GEDGE);
-
+    
+    g.loadFont(FontRu);
     g.setTextDatum(MC_DATUM);
     g.setTextColor(C_LABEL, C_CASE);
-    snprintf(buf, sizeof buf, "%s %02d %s", WD[t.tm_wday % 7], t.tm_mday,
-             MO[t.tm_mon % 12]);
+    snprintf(buf, sizeof(buf), "%02d %s %04d",
+             t.tm_mday, MONS[t.tm_mon % 12], t.tm_year + 1900);
     g.drawString(buf, CX, 162, 2);
+    g.unloadFont();
 
     if (wxValid) snprintf(buf, sizeof buf, "%d%c%s", wxTempF, 0xB0, wxUnit());
     else         strcpy(buf, "--");
