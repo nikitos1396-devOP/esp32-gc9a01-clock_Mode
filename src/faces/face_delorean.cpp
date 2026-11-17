@@ -447,9 +447,9 @@ static void render(GFX &g, const struct tm &t, float subSec)
     well(g, 113, 150, 42, 24);
     letters(g, MONTHS[t.tm_mon % 12], 116, 153, 11, 18, 3, 2, C_GRN, C_GRN_OFF);
 
-    well(g, 159, 150, 52, 24);
+    well(g, 157, 150, 56, 24);
     snprintf(buf, sizeof buf, "%04d", t.tm_year + 1900);
-    digits(g, buf, 162, 153, 11, 18, 3, 2, C_GRN, C_GRN_OFF);
+    digits(g, buf, 160, 153, 11, 18, 3, 2, C_GRN, C_GRN_OFF);
 
     // ---- last departed row: sun times | TEMP | DAYLIGHT --------------------
     // One box carries both sun times, swapping every five seconds, which
@@ -514,7 +514,7 @@ static int faceDirty(const struct tm &t, float, const struct tm &pt, float,
         const DirtyRect perSecond[] = {
             { 104,  33,  92, 56 },   // gauge - the needle tracks signal strength
             {  65, 108, 110, 24 },   // HOUR MIN SEC wells
-            {  29, 150, 182, 24 },   // WEEK DAY MONTH YEAR wells
+            {  29, 150, 186, 24 },   // WEEK DAY MONTH YEAR wells
             // x is the left edge here, while tab() above takes a centre -
             // these two are the tab and its well as one box.
             {  55, 180,  58, 34 },   // SUNRISE/SUNSET tab (it swaps) and well
