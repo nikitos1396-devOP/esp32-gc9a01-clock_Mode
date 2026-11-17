@@ -72,7 +72,7 @@ static bool isNightHere(const struct tm &t)
 #define Y_DATE   38
 #define Y_WEEK   64
 #define Y_SUN   154
-#define Y_TEMP  174
+#define Y_TEMP  184
 
 uint16_t faceBackground() { return C_BG; }
 bool     faceSmooth()     { return false; }   // digital: redraw on the second
