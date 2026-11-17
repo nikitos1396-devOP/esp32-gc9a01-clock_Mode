@@ -146,10 +146,12 @@ static void render(GFX &g, const struct tm &t, float subSec)
 
     // captions outside the array
     static const char *DAYS[7]  = { "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС" };
-    snprintf(buf, sizeof(buf), "%s %d", DAYS[t.tm_wday % 7], t.tm_mday);
+    snprintf(buf, sizeof(buf), "%s %d", DAYS[(t.tm_wday + 6) % 7], t.tm_mday);
+    g.loadFont(FontRuSmall);
     g.setTextDatum(TC_DATUM);
     g.setTextColor(timeValid ? C_TEXT : C_LABEL, C_GLASS);
-    g.drawString(buf, 120, 214, 2);
+    g.drawString(buf, 120, 212);
+    g.unloadFont();
 
     if (wxValid) {
         // Font 4 rather than 2: at the previous size it read as a footnote
