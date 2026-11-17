@@ -14,6 +14,8 @@
 // ---------------------------------------------------------------------------
 #include "../face.h"
 #include <string.h>
+extern const uint8_t FontRu[];
+extern const uint8_t FontRuSmall[];
 
 // Wrapped in its own namespace so every face can be linked into the same
 // binary: each defines faceInit/faceRender/faceBackground/faceSmooth, which
@@ -107,74 +109,67 @@ static void seg7Pair(GFX &g, int x, int y, int w, int h, int t, int gap,
     seg7(g, x + w + gap, y, w, h, t, v % 10,        on);
 }
 
-static const char *DAYS[7] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
-static const char *MONS[12] = { "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-                                "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
+static const char *DAYS[7]  = { "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС" };   // с понедельника
+static const char *MONS[12] = { "ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН",
+                                "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК" };
 
 // ---- the face -------------------------------------------------------------
 template <typename GFX>
+template <typename GFX>
 static void render(GFX &g, const struct tm &t, float subSec)
 {
-    // Hard pixels: this face is imitating a cheap LCD, and smoothing the
-    // type would erase the very thing being imitated.
     textSmooth(g, false);
     (void)subSec;
-    char buf[40];
+    char buf[64];
     const Theme &th = isNightHere(t) ? NIGHT_T : DAY_T;
 
     g.fillScreen(C_BG);
     g.drawSmoothCircle(120, 120, 117, C_RING, C_BG);
 
-    // ---- date ------------------------------------------------------------
-    // Font 1 doubled: blocky and monospaced, which is what the reference's
-    // pixel font reads as. Proportional fonts lose that entirely.
+    // ---- дата ------------------------------------------------------------
     snprintf(buf, sizeof(buf), "%02d %s %04d",
              t.tm_mday, MONS[t.tm_mon % 12], t.tm_year + 1900);
-    g.setTextSize(2);
+    g.loadFont(FontRu);
     g.setTextDatum(TC_DATUM);
     g.setTextColor(th.text, C_BG);
-    g.drawString(buf, 120, Y_DATE, 1);
-    g.setTextSize(1);
+    g.drawString(buf, 120, Y_DATE);
+    g.unloadFont();
 
-    // ---- week strip, today inverted --------------------------------------
+    // Дальше всё русское рисуется мелким шрифтом, загруженным один раз.
+    g.loadFont(FontRuSmall);
+
+    // ---- неделя с понедельника, сегодняшний день инвертирован ------------
     {
-        const int cw = 24;                       // 3 chars at font 1 + padding
+        const int cw    = 26;
         const int total = 7 * cw;
-        int x = 120 - total / 2;
+        int x     = 120 - total / 2;
+        int today = (t.tm_wday + 6) % 7;         // 0 = понедельник
         g.setTextDatum(TC_DATUM);
         for (int d = 0; d < 7; d++) {
-            bool today = (d == t.tm_wday % 7);
-            if (today) {
-                g.fillRoundRect(x + d * cw + 1, Y_WEEK - 3, cw - 2, 14, 3, th.text);
+            if (d == today) {
+                g.fillRoundRect(x + d * cw + 1, Y_WEEK - 4, cw - 2, 18, 3, th.text);
                 g.setTextColor(C_BG, th.text);
             } else {
                 g.setTextColor(th.dim, C_BG);
             }
-            g.drawString(DAYS[d], x + d * cw + cw / 2, Y_WEEK, 1);
+            g.drawString(DAYS[d], x + d * cw + cw / 2, Y_WEEK);
         }
     }
 
-    // ---- the LCD strip ---------------------------------------------------
+    // ---- полоска LCD -----------------------------------------------------
     g.fillRoundRect(LCD_X, LCD_Y, LCD_W, LCD_H, 6, th.panel);
 
-    // Weather icon in the strip's left slot, drawn mono in the segment ink:
-    // a full-colour icon washes out against a light LCD substrate, and dark
-    // marks on a lit background is what a real segment panel does anyway.
     wxIconMono(g, LCD_X + 24, LCD_Y + LCD_H / 2,
                wxValid ? iconForCode(wxCode) : WX_UNKNOWN, wxIsDay,
                th.ink, th.panel);
 
-    {   // 24-hour time, the strip's whole reason for existing
+    {
         const int dw = 26, dh = 40, dt = 6, dg = 4, cw = 6;
         int x  = LCD_X + 46;
         int dy = LCD_Y + 9;
         uint16_t ink = timeValid ? th.ink : C_WARN;
 
         seg7Pair(g, x, dy, dw, dh, dt, dg, t.tm_hour, ink);
-        // The colon blinks on the second, as the original watch does. This
-        // face draws no ghost segments - seg7Pair here takes only an ink
-        // colour - so the off state is the substrate rather than a dimmed
-        // square, which is what an LCD without a backlight actually shows.
         int cx = x + 2 * dw + 2 * dg;
         uint16_t colc = (t.tm_sec & 1) ? ink : th.panel;
         g.fillRect(cx, dy + 10,      cw, cw, colc);
@@ -182,34 +177,33 @@ static void render(GFX &g, const struct tm &t, float subSec)
         seg7Pair(g, cx + cw + dg, dy, dw, dh, dt, dg, t.tm_min, ink);
     }
 
-    {   // seconds, in the slot the reference used for heart rate
+    {   // секунды
         g.setTextDatum(TR_DATUM);
         g.setTextColor(th.ink, th.panel);
-        g.drawString("SEC", LCD_X + LCD_W - 8, LCD_Y + 10, 1);
+        g.drawString("СЕК", LCD_X + LCD_W - 8, LCD_Y + 8);
         seg7Pair(g, LCD_X + LCD_W - 30, LCD_Y + 26, 10, 18, 3, 2, t.tm_sec, th.ink);
     }
 
-    // ---- sunrise / sunset ------------------------------------------------
+    // ---- восход / закат --------------------------------------------------
     if (wxSunrise >= 0 && wxSunset >= 0)
-        snprintf(buf, sizeof(buf), "SUNRISE:%02d:%02d TO SUNSET:%02d:%02d",
+        snprintf(buf, sizeof(buf), "ВОСХОД %02d:%02d  ЗАКАТ %02d:%02d",
                  wxSunrise / 60, wxSunrise % 60, wxSunset / 60, wxSunset % 60);
     else
-        strcpy(buf, "SUNRISE:--:-- TO SUNSET:--:--");
+        strcpy(buf, "ВОСХОД --:--  ЗАКАТ --:--");
     g.setTextDatum(TC_DATUM);
     g.setTextColor(th.text, C_BG);
-    g.drawString(buf, 120, Y_SUN, 1);
+    g.drawString(buf, 120, Y_SUN);
 
-    // ---- temperature -----------------------------------------------------
-    // Alone on the bottom row now that the icon has moved up, so it gets the
-    // full width and a larger size. Font 1 at size 3 is exactly 18 px per
-    // character, so the group measures directly.
+    g.unloadFont();
+
+    // ---- температура: цифры встроенным шрифтом, как раньше ---------------
     {
         char tmp[10];
         if (wxValid) snprintf(tmp, sizeof(tmp), "%d", wxTempF);
         else         strcpy(tmp, "--");
 
         int numW  = (int)strlen(tmp) * 18;
-        int total = numW + 22;                   // number + degree ring + F
+        int total = numW + 22;
         int left  = 120 - total / 2;
 
         g.setTextSize(3);
