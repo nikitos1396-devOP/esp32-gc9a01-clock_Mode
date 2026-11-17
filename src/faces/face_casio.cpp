@@ -529,8 +529,29 @@ static void render(GFX &g, const struct tm &t, float subSec)
     }
 
     // ---- DAY / weather ----------------------------------------------------
-    seg14Triple(g, DAY_MASKS[(t.tm_wday + 6) % 7], B_DAY.cx, B_DAY.cy,
-            17, 28, 4, 3, th.ink, th.panel, th.panel);
+    seg14Pair(g, DAY_MASKS2[(t.tm_wday + 6) % 7], B_DAY.cx, B_DAY.cy,
+          24, 30, 5, 5, th.ink, th.panel, th.panel);
+
+    static const uint16_t DAY_MASKS2[7][2] = {
+    {RU_P,  RU_N},   // ПН
+    {RU_V,  RU_T},   // ВТ
+    {RU_S,  RU_R},   // СР
+    {RU_CH, RU_T},   // ЧТ
+    {RU_P,  RU_T},   // ПТ
+    {RU_S,  RU_B},   // СБ
+    {RU_V,  RU_S},   // ВС
+};
+
+template <typename GFX>
+static void seg14Pair(GFX &g, const uint16_t *m, int cx, int cy,
+                      int dw, int dh, int dt, int gap,
+                      uint16_t on, uint16_t off, uint16_t bg)
+{
+    int x = cx - (2 * dw + gap) / 2;
+    int y = cy - dh / 2;
+    seg14(g, x,            y, dw, dh, dt, m[0], on, off, bg);
+    seg14(g, x + dw + gap, y, dw, dh, dt, m[1], on, off, bg);
+}
 
     wxIconMono(g, B_WX.cx, B_WX.cy, wxValid ? iconForCode(wxCode) : WX_UNKNOWN,
                wxIsDay, th.ink, th.panel);
