@@ -119,7 +119,7 @@ static void drawDial(GFX &g)
             // Font 8: FreeSans at the panel's own resolution, rather than a
             // 26 px bitmap doubled. The numerals are the whole character of
             // this dial, so they are the thing worth spending the flash on.
-            g.drawString(MARKS[i], numPos[i].x, numPos[i].y, 9);
+            g.drawString(MARKS[i], numPos[i].x, numPos[i].y, 4);
             continue;
         }
         if (i == 0) continue;                     // 12 is the triangle, below
