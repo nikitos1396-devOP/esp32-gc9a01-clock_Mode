@@ -185,7 +185,7 @@ static void render(GFX &g, const struct tm &t, float subSec)
 
     // ---- восход / закат --------------------------------------------------
     if (wxSunrise >= 0 && wxSunset >= 0)
-        snprintf(buf, sizeof(buf), "ВОСХОД %02d:%02d  ЗАКАТ %02d:%02d",
+        snprintf(buf, sizeof(buf), "ВОСХОД: %02d:%02d | ЗАКАТ: %02d:%02d",
                  wxSunrise / 60, wxSunrise % 60, wxSunset / 60, wxSunset % 60);
     else
         strcpy(buf, "ВОСХОД --:--  ЗАКАТ --:--");
