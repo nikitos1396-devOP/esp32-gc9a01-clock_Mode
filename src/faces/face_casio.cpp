@@ -46,7 +46,7 @@ struct Pt { int16_t x, y; };
 // top sitting inside a band of dead case. The divider slope is unchanged.
 static const Pt POLY_TEMP[4] = { {  0,   0}, {145,   0}, {130,  72}, {  0,  72} };
 static const Pt POLY_DATE[4] = { {153,   0}, {240,   0}, {236,  72}, {138,  72} };
-static const Pt POLY_SEC [4] = { { -8,  76}, {240,  76}, {232, 108}, {-20, 108} };
+static const Pt POLY_SEC [4] = { { -8,  76}, {256,  76}, {248, 108}, {-20, 108} };
 static const Pt POLY_TIME[4] = { {  0, 112}, {240, 112}, {232, 182}, {  4, 182} };
 // Bottom row: the divider leans the opposite way to the TEMP/DATE one above,
 // so the two splits mirror each other across the face. That makes the
@@ -530,7 +530,7 @@ static void render(GFX &g, const struct tm &t, float subSec)
 
     // ---- DAY / weather ----------------------------------------------------
     seg14Triple(g, DAY_MASKS[(t.tm_wday + 6) % 7], B_DAY.cx, B_DAY.cy,
-                16, 26, 3, 3, th.ink, th.ghost, th.panel);
+            17, 28, 4, 3, th.ink, th.panel, th.panel);
 
     wxIconMono(g, B_WX.cx, B_WX.cy, wxValid ? iconForCode(wxCode) : WX_UNKNOWN,
                wxIsDay, th.ink, th.panel);
