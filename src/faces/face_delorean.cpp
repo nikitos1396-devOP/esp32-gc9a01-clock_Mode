@@ -149,13 +149,17 @@ static void seg14(GFX &g, int x, int y, int w, int h, int t, uint16_t m,
         }
 }
 
-// A row of seven-segment digits from a string; '-' and ' ' blank the cell.
+// A row of seven-segment digits from a string; ' ' blanks the cell,
+// '-' lights only the middle bar.
 template <typename GFX>
 static void digits(GFX &g, const char *s, int x, int y, int w, int h, int t,
                    int gap, uint16_t on, uint16_t off)
 {
-    for (; *s; s++, x += w + gap)
+    for (; *s; s++, x += w + gap) {
         seg7(g, x, y, w, h, t, (*s >= '0' && *s <= '9') ? *s - '0' : -1, on, off);
+        if (*s == '-')
+            g.fillRect(x + t, y + (h - t) / 2, w - 2 * t, t, on);
+    }
 }
 
 template <typename GFX>
