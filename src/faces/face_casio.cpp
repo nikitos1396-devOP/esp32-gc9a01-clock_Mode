@@ -317,8 +317,13 @@ static void seg14(GFX &g, int x, int y, int w, int h, int t, uint16_t m,
     // horizontals
     g.fillRect(x + t,     y,           w - 2 * t, t, (m & 0x0001) ? on : off); // A
     g.fillRect(x + t,     y + h - t,   w - 2 * t, t, (m & 0x0008) ? on : off); // D
-    g.fillRect(x + t,     y + half,    hw,        t, (m & 0x0040) ? on : off); // G1
-    g.fillRect(cx + t,    y + half,    hw,        t, (m & 0x0080) ? on : off); // G2
+    if ((m & 0x00C0) == 0x00C0) {
+        // обе половинки горят: рисуем сплошную перекладину без зазора
+        g.fillRect(x + t, y + half, w - 2 * t, t, on);
+    } else {
+        g.fillRect(x + t,  y + half, hw, t, (m & 0x0040) ? on : off);  // G1
+        g.fillRect(cx + t, y + half, hw, t, (m & 0x0080) ? on : off);  // G2
+    }
     // outer verticals
     g.fillRect(x,         y + t,        t, vh, (m & 0x0020) ? on : off);       // F
     g.fillRect(x,         y + half + t, t, vh, (m & 0x0010) ? on : off);       // E
@@ -552,8 +557,8 @@ static void render(GFX &g, const struct tm &t, float subSec)
     }
 
     // ---- DAY / weather ----------------------------------------------------
-    seg14Pair(g, DAY_MASKS2[(t.tm_wday + 6) % 7], B_DAY.cx, B_DAY.cy,
-              24, 30, 5, 5, th.ink, th.panel, th.panel);
+    seg14Pair(g, DAY_MASKS2[(t.tm_wday + 6) % 7], B_DAY.cx, B_DAY.cy + 4,
+              24, 28, 5, 5, th.ink, th.panel, th.panel);
 
     wxIconMono(g, B_WX.cx, B_WX.cy, wxValid ? iconForCode(wxCode) : WX_UNKNOWN,
                wxIsDay, th.ink, th.panel);
