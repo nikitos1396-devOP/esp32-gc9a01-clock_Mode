@@ -236,7 +236,6 @@ static void render(GFX &g, const struct tm &t, float subSec)
     // OUTRUN, small and wide across the top
     g.setTextDatum(TC_DATUM);
     g.setTextColor(pal.label, pal.skyTop);
-    g.drawString("O U T R U N", CX, 18, 1);
 
     // The date strip. Filled, with a border only along the top and bottom:
     // the reference has the weekday and date sitting between two rules, and
@@ -288,4 +287,13 @@ static void render(GFX &g, const struct tm &t, float subSec)
 static void faceRender(TFT_eSprite &g, const struct tm &t, float sub) { render(g, t, sub); }
 static void faceRender(TFT_eSPI    &g, const struct tm &t, float sub) { render(g, t, sub); }
 
+} // namespace face_outrun
+
+const FaceVTable FACE_OUTRUN = {
+    "outrun",
+    face_outrun::faceInit,
+    face_outrun::faceBackground,
+    face_outrun::faceSmooth,
+    (void(*)(TFT_eSprite&, const struct tm&, float))face_outrun::faceRender,
+    (void(*)(TFT_eSPI&,    const struct tm&, float))face_outrun::faceRender,
 };
