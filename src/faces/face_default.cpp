@@ -89,7 +89,7 @@ static void drawDial(GFX &g)
         // Font 9: FreeSans Bold at the panel's own resolution rather than a
         // 26 px bitmap doubled. Smaller on the dial than font 4 was, but the
         // weight carries it and the edges are actually crisp.
-        g.drawNumber(n, numerals[i].x, numerals[i].y, 9);
+        g.drawNumber(n, numerals[i].x, numerals[i].y, 4);
     }
 }
 
@@ -110,7 +110,7 @@ static void drawWeather(GFX &g)
     int left = TEMP_X - (tw + 11) / 2;
 
     g.setTextDatum(ML_DATUM);
-    g.drawString(buf, left, CY, 9);
+    g.drawString(buf, left, CY, 4);
     if (wxValid) {
         g.drawCircle(left + tw + 3, CY - 7, 2, C_TEMP);
         g.drawString(wxUnit(), left + tw + 7, CY, 2);
