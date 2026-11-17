@@ -20,6 +20,7 @@
 // ---------------------------------------------------------------------------
 #include "../face.h"
 #include <WiFi.h>
+#include "../settings.h"
 extern const uint8_t FontRuSmall[];
 
 namespace face_panel {
@@ -217,6 +218,28 @@ static void hhmm(char *out, int minutes)
     snprintf(out, 8, "%02d:%02d", minutes / 60, minutes % 60);
 }
 
+// Название сохранённого города по центру. Если не помещается в maxW,
+// обрезается по границе UTF-8 символа и получает ".." в конце.
+// Вызывать, пока загружен русский шрифт: ширина считается по нему.
+template <typename GFX>
+static void drawLocation(GFX &g, int cx, int y, int maxW)
+{
+    String s = settings.locQuery.length() ? settings.locQuery : settings.locName;
+    if (!s.length()) return;
+
+    if (g.textWidth(s) > maxW) {
+        while (s.length() && g.textWidth(s + "..") > maxW) {
+            int i = s.length() - 1;
+            while (i > 0 && (((uint8_t)s[i]) & 0xC0) == 0x80) i--;   // к началу символа
+            s.remove(i);
+        }
+        s += "..";
+    }
+    g.setTextDatum(TC_DATUM);
+    g.setTextColor(P_COL, C_BG);
+    g.drawString(s, cx, y);
+}
+
 // ---- the face ---------------------------------------------------------------
 template <typename GFX>
 static void render(GFX &g, const struct tm &t, float)
@@ -230,14 +253,13 @@ static void render(GFX &g, const struct tm &t, float)
     G_COL = night ? C_GHOST_N : C_GHOST_D;
 
     g.fillScreen(C_BG);
-    // the dark ground has a fine dot texture
     for (int y = 2; y < 240; y += 4)
         for (int x = (y & 4) ? 2 : 0; x < 240; x += 4)
             g.drawPixel(x, y, C_DOT);
 
     char buf[16];
 
-    // ---- day-progress scale (мелкий встроенный шрифт 1, рисуем до русского) ----
+    // ---- day-progress scale (встроенный шрифт 1, до загрузки русского) -----
     g.drawFastHLine(48, 77, 144, C_BAR);
     static const int PCT[5] = {0, 30, 50, 70, 100};
     static const char *PCTS[5] = {"0", "30", "50", "70", "100"};
@@ -257,7 +279,6 @@ static void render(GFX &g, const struct tm &t, float)
         g.fillTriangle(x - 4, 66, x + 4, 66, x, 73, C_RED);
     }
 
-    // Дальше весь текст русским шрифтом: один раз загрузили, в конце выгрузим.
     g.loadFont(FontRuSmall);
 
     // ---- top row: sunrise | temperature ------------------------------------
@@ -287,9 +308,15 @@ static void render(GFX &g, const struct tm &t, float)
     signalBars(g, 40, 97, sig);
     snprintf(buf, sizeof buf, "%d", sig);
     {
-        int w = segWidth(buf, 8, 2, 2);
-        int x = 30 + (38 - w - 9) / 2;
-        segText(g, buf, x, 101, 8, 12, 2, 2);
+        // При 100% цифры мельче, а вся группа «число + %» центрируется
+        // по реальной ширине знака процента в шрифте.
+        const bool big = sig >= 100;
+        const int  dw = big ? 6 : 8, dh = big ? 10 : 12, dt = 2, dg = big ? 1 : 2;
+        const int  dy = big ? 102 : 101;
+        int w  = segWidth(buf, dw, dt, dg);
+        int pw = g.textWidth("%");
+        int x  = 30 + (38 - (w + 2 + pw)) / 2;
+        segText(g, buf, x, dy, dw, dh, dt, dg);
         g.setTextDatum(TL_DATUM);
         g.setTextColor(C_INK, P_COL);
         g.drawString("%", x + w + 2, 99);
@@ -300,25 +327,23 @@ static void render(GFX &g, const struct tm &t, float)
 
     moon(g, 132, 101, 11, moonPhase8(time(nullptr)));
 
+    // число месяца по центру ячейки (центр 179, как и у подписи месяца)
     panel(g, 150, 84, 58, 34);
     snprintf(buf, sizeof buf, "%02d", t.tm_mday);
-    segText(g, buf, 158, 87, 10, 17, 2, 3);
+    segText(g, buf, 150 + (58 - segWidth(buf, 10, 2, 3)) / 2, 87, 10, 17, 2, 3);
     label(g, MON[t.tm_mon % 12], 179, 104);
 
     // ---- the time ----------------------------------------------------------
-    g.setTextDatum(TC_DATUM);
-    g.setTextColor(C_TEXT, C_BG);
-    g.drawString("24Ч", 43, 143);
-    bell(g, 43, 168, 0x4208);
-
+    // Группа «часы + секунды» сдвинута влево на 19 px: теперь она занимает
+    // x = 39..201 и стоит по центру экрана, как нижние ячейки (44..196).
     snprintf(buf, sizeof buf, "%02d:%02d", t.tm_hour, t.tm_min);
-    panel(g, 58, 124, 130, 52);
-    segText(g, buf, 62, 128, 24, 44, 5, 6,
+    panel(g, 39, 124, 130, 52);
+    segText(g, buf, 43, 128, 24, 44, 5, 6,
             (t.tm_sec & 1) ? (int)C_INK : (int)P_COL);
-    panel(g, 190, 124, 30, 52);
+    panel(g, 171, 124, 30, 52);
     snprintf(buf, sizeof buf, "%02d", t.tm_sec);
-    segText(g, buf, 194, 154, 10, 18, 2, 3);
-    wxIconMono(g, 205, 139, wxValid ? iconForCode(wxCode) : WX_UNKNOWN, !night, C_INK, P_COL);
+    segText(g, buf, 175, 154, 10, 18, 2, 3);
+    wxIconMono(g, 186, 139, wxValid ? iconForCode(wxCode) : WX_UNKNOWN, !night, C_INK, P_COL);
 
     // ---- third row: sunset | daylight --------------------------------------
     panel(g, 44, 180, 74, 30);
@@ -333,19 +358,8 @@ static void render(GFX &g, const struct tm &t, float)
     segText(g, buf, 122 + (74 - segWidth(buf, 8, 2, 2)) / 2, 183, 8, 12, 2, 2);
     label(g, "ДЕНЬ", 159, 194);
 
-    // ---- foot: только смещение от GMT --------------------------------------
-    {
-        time_t now = time(nullptr);
-        struct tm lt, ut;
-        localtime_r(&now, &lt);
-        gmtime_r(&now, &ut);
-        int off = (int)(mktime(&lt) - mktime(&ut)) / 60;   // minutes east of UTC
-        if (off % 60) snprintf(buf, sizeof buf, "GMT %+d:%02d", off / 60, abs(off % 60));
-        else          snprintf(buf, sizeof buf, "GMT %+d", off / 60);
-    }
-    g.setTextDatum(TC_DATUM);
-    g.setTextColor(P_COL, C_BG);
-    g.drawString(buf, 120, 216);
+    // ---- foot: сохранённый город -------------------------------------------
+    drawLocation(g, 120, 216, 100);
 
     g.unloadFont();
 }
