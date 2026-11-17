@@ -506,15 +506,22 @@ static void render(GFX &g, const struct tm &t, float subSec)
         labelC(g, lab, B_TEMP.cx, B_TEMP.cy - 24, th, 2);
 
         const int dw = 18, dh = 24, dt = 4, dg = 3;
+        const bool neg = wxValid && wxTempF < 0;
         int av = wxValid ? abs(wxTempF) : 0;
         int digits[3], n;
         if (av >= 100) { n = 3; digits[0] = av / 100; digits[1] = (av / 10) % 10; digits[2] = av % 10; }
         else           { n = 2; digits[0] = (av / 10) % 10; digits[1] = av % 10; }
 
         int wsum  = n * dw + (n - 1) * dg;
-        int left  = B_TEMP.cx - (wsum + 14) / 2;
+        const int mw = 8, mg = 3;                       // минус: полоска + зазор
+        int extra = neg ? mw + mg : 0;
+        int left  = B_TEMP.cx - (wsum + extra + 14) / 2;
         int dy    = B_TEMP.cy - 4;
 
+        if (neg) {
+            g.fillRect(left, dy + (dh - dt) / 2, mw, dt, th.ink);
+            left += mw + mg;
+        }
         for (int i = 0; i < n; i++)
             seg7(g, left + i * (dw + dg), dy, dw, dh, dt,
                  wxValid ? digits[i] : -1, th.ink, th.ghost);
