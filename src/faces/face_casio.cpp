@@ -328,16 +328,18 @@ static void seg14(GFX &g, int x, int y, int w, int h, int t, uint16_t m,
     g.fillRect(cx,        y + t,        t, vh, (m & 0x0200) ? on : off);       // I
     g.fillRect(cx,        y + half + t, t, vh, (m & 0x1000) ? on : off);       // L
 
-    // diagonals
+    // diagonals: рисуем только горящие, а погашенные только если у них
+    // есть видимый «призрачный» цвет. Иначе погашенная диагональ стирает
+    // куски соседних горящих сегментов.
     float wd = t * 0.9f; if (wd < 1.5f) wd = 1.5f;
-    g.drawWideLine(x + t + 1,     y + t + 1,        cx - 1,        y + half - 1,
-                   wd, (m & 0x0100) ? on : off, bg);                           // H
-    g.drawWideLine(x + w - t - 1, y + t + 1,        cx + t + 1,    y + half - 1,
-                   wd, (m & 0x0400) ? on : off, bg);                           // J
-    g.drawWideLine(cx - 1,        y + half + t + 1, x + t + 1,     y + h - t - 1,
-                   wd, (m & 0x0800) ? on : off, bg);                           // K
-    g.drawWideLine(cx + t + 1,    y + half + t + 1, x + w - t - 1, y + h - t - 1,
-                   wd, (m & 0x2000) ? on : off, bg);                           // M
+    auto diag = [&](int x0, int y0, int x1, int y1, uint16_t bit) {
+        if (m & bit)         g.drawWideLine(x0, y0, x1, y1, wd, on,  bg);
+        else if (off != bg)  g.drawWideLine(x0, y0, x1, y1, wd, off, bg);
+    };
+    diag(x + t + 1,     y + t + 1,        cx - 1,        y + half - 1,     0x0100); // H
+    diag(x + w - t - 1, y + t + 1,        cx + t + 1,    y + half - 1,     0x0400); // J
+    diag(cx - 1,        y + half + t + 1, x + t + 1,     y + h - t - 1,    0x0800); // K
+    diag(cx + t + 1,    y + half + t + 1, x + w - t - 1, y + h - t - 1,    0x2000); // M
 }
 
 static uint16_t seg14ForLetter(char c)
