@@ -25,6 +25,8 @@
 //  Cream hands with a hairline red seconds hand, as on the original.
 // ---------------------------------------------------------------------------
 #include "../face.h"
+extern const uint8_t FontRu[];
+extern const uint8_t FontRuSmall[];
 
 namespace face_california {
 
@@ -153,12 +155,14 @@ static void drawDial(GFX &g)
 template <typename GFX>
 static void drawDate(GFX &g, const struct tm &t)
 {
-    static const char *WD[7] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
+    static const char *DAYS[7] = { "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС" };
     char buf[12];
-    snprintf(buf, sizeof buf, "%s %d", WD[t.tm_wday % 7], t.tm_mday);
+    snprintf(buf, sizeof(buf), "%s %d", DAYS[(t.tm_wday + 6) % 7], t.tm_mday);
+    g.loadFont(FontRuSmall);
     g.setTextDatum(MC_DATUM);
     g.setTextColor(C_DATE, C_DIAL);
     g.drawString(buf, CX, CY - 44, 2);
+    g.unloadFont();
 }
 
 // Where the original puts a moonphase, this puts the sky it can actually
