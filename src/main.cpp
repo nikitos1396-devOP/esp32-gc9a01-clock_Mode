@@ -22,6 +22,7 @@
 #include "tz.h"
 #include "font_ru.h"
 #include "font_ru_small.h"
+#include <Preferences.h>
 #ifdef AMOLED_C6
 #include "c6/touch.h"
 #include "c6/audio.h"
@@ -108,14 +109,14 @@ static const FaceVTable *const ROTATION[] = {
     // retro for three hours.
     &FACE_RETRO,
 #else
-    &FACE_RETRO, &FACE_DOTMATRIX, &FACE_PULSAR, &FACE_PCB,
-    &FACE_CASIO, &FACE_MOSAIC, &FACE_DEFAULT, &FACE_CLASSIC, &FACE_MODERN,
+    &FACE_DEFAULT, &FACE_DOTMATRIX, &FACE_PULSAR, &FACE_PCB,
+    &FACE_CASIO, &FACE_MOSAIC, &FACE_RETRO, &FACE_CLASSIC, &FACE_MODERN,
     &FACE_PANEL, &FACE_DELOREAN, &FACE_CALIFORNIA, &FACE_OUTRUN,
     &FACE_NIXIE,
 #endif
 };
 static const int      ROTATION_N = sizeof(ROTATION) / sizeof(ROTATION[0]);
-static const uint32_t ROTATE_MS  = 3UL * 60UL * 60UL * 1000UL;   // 3 hours
+static const uint32_t ROTATE_MS  = 0;
 static const bool     ROTATE_RANDOM = true;
 
 const FaceVTable *activeFace = ROTATION[0];
@@ -133,6 +134,22 @@ static int nextFaceIdx(int cur)
     if (ROTATION_N < 2)  return 0;
     if (!ROTATE_RANDOM)  return (cur + 1) % ROTATION_N;
     return (cur + 1 + (int)(esp_random() % (ROTATION_N - 1))) % ROTATION_N;
+}
+static int loadFaceIdx()
+{
+    Preferences p;
+    p.begin("faceprefs", true);
+    int i = p.getInt("face", 0);
+    p.end();
+    return (i >= 0 && i < ROTATION_N) ? i : 0;
+}
+
+static void saveFaceIdx(int i)
+{
+    Preferences p;
+    p.begin("faceprefs", false);
+    if (p.getInt("face", -1) != i) p.putInt("face", i);
+    p.end();
 }
 // File scope rather than function-local: a face switch resets it to force
 // an immediate repaint.
@@ -490,6 +507,7 @@ static void showFace(int idx)
     activeFace = ROTATION[faceIdx];
     faceSince  = millis();
     lastSec    = -1;
+    saveFaceIdx(faceIdx);
     screenInvalidate();
     screenClear(activeFace->background());
 }
@@ -600,7 +618,7 @@ void setup()
     parkOnboardLed();
 
     pinMode(9, INPUT_PULLUP);
-    faceIdx    = 0;
+    faceIdx    = loadFaceIdx();
     activeFace = ROTATION[faceIdx];
 
     // Frame buffers are claimed in here, before WiFi comes up, while the heap
