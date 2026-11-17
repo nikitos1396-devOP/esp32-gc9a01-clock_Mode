@@ -195,15 +195,14 @@ static String urlEncode(const String &s)
     return o;
 }
 
-// Turn the typed location into coordinates and a timezone, once. Open-Meteo's
-// geocoder takes a postcode or a town name and answers over plain HTTP.
+// Геокодер OpenWeatherMap: тот же ключ, что и для погоды, понимает кириллицу.
 static bool resolveLocation()
 {
     if (settings.hasLoc) return true;
     if (!settings.locQuery.length() || WiFi.status() != WL_CONNECTED) return false;
 
-    String url = "http://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name="
-                 + urlEncode(settings.locQuery);
+    String url = String("http://api.openweathermap.org/geo/1.0/direct?limit=1&appid=")
+               + OWM_KEY + "&q=" + urlEncode(settings.locQuery);
     WiFiClient client;
     HTTPClient http;
     http.useHTTP10(true);
@@ -213,22 +212,20 @@ static bool resolveLocation()
 
     bool ok = false;
     if (http.GET() == HTTP_CODE_OK) {
-        // The reply lists every postcode in the town; keep only what we use.
         JsonDocument filter;
-        JsonObject f = filter["results"][0].to<JsonObject>();
-        f["latitude"] = true; f["longitude"] = true; f["timezone"] = true;
-        f["name"] = true;     f["country_code"] = true;
+        JsonObject f = filter[0].to<JsonObject>();
+        f["lat"] = true; f["lon"] = true; f["name"] = true; f["country"] = true;
         JsonDocument doc;
         if (!deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter))) {
-            JsonObject r = doc["results"][0];
-            if (!r.isNull()) {
-                settings.lat     = r["latitude"]  | 0.0f;
-                settings.lon     = r["longitude"] | 0.0f;
-                settings.tzName  = (const char *)(r["timezone"] | "");
-                settings.locName = String((const char *)(r["name"] | "")) + ", "
-                                 + (const char *)(r["country_code"] | "");
-                settings.hasLoc  = true;
-                settings.hasOffset = false;
+            JsonObject r = doc[0];
+            if (!r.isNull() && r["lat"].is<float>()) {
+                settings.lat       = r["lat"] | 0.0f;
+                settings.lon       = r["lon"] | 0.0f;
+                settings.tzName    = "";             // пояс берём из ответа погоды
+                settings.hasOffset = false;          // и пересчитаем заново
+                settings.locName   = String((const char *)(r["name"] | "")) + ", "
+                                   + (const char *)(r["country"] | "");
+                settings.hasLoc    = true;
                 settingsSave();
                 ok = true;
             }
