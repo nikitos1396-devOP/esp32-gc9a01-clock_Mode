@@ -11,6 +11,8 @@
 //  frame and makes the clock look frozen.
 // ---------------------------------------------------------------------------
 #include "../face.h"
+extern const uint8_t FontRu[];
+extern const uint8_t FontRuSmall[];
 
 // Wrapped in its own namespace so every face can be linked into the same
 // binary: each defines faceInit/faceRender/faceBackground/faceSmooth, which
@@ -118,15 +120,23 @@ static void drawWeather(GFX &g)
 template <typename GFX>
 static void drawText(GFX &g, const struct tm &t)
 {
+    static const char *WD[7]  = { "ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ" };
+    static const char *MON[12] = { "ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН",
+                                   "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК" };
     char buf[32];
+
+    g.loadFont(FontRuSmall);
     g.setTextDatum(MC_DATUM);
     g.setTextColor(C_TEXT, C_FACE);
 
-    strftime(buf, sizeof(buf), "%a %d %b", &t);
-    g.drawString(buf, CX, CY - 46, 2);
+    snprintf(buf, sizeof(buf), "%s %d %s",
+             WD[t.tm_wday % 7], t.tm_mday, MON[t.tm_mon % 12]);
+    g.drawString(buf, CX, CY - 46);
 
-    strftime(buf, sizeof(buf), "%H:%M:%S", &t);
-    g.drawString(buf, CX, CY + 50, 2);
+    snprintf(buf, sizeof(buf), "%02d:%02d:%02d", t.tm_hour, t.tm_min, t.tm_sec);
+    g.drawString(buf, CX, CY + 50);
+
+    g.unloadFont();
 
     // cyan dot = sprite alloc failed, running direct (slow)
     if (!useSprite) g.fillSmoothCircle(CX, CY + 72, 3, C_DIRECT, C_FACE);
