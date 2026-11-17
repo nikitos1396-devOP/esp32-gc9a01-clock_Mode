@@ -409,9 +409,9 @@ static void render(GFX &g, const struct tm &t, float subSec)
     // One pulse a second: the sweep itself takes about 0.7 s and the rest
     // is the beat between them.
     float ticks = (t.tm_sec + subSec) / 1.0f;
-    fluxCapacitor(g, 46, 32, 54, 58, ticks - (int)ticks);
+    fluxCapacitor(g, 48, 36, 54, 50, ticks - (int)ticks);
 
-    gauge(g, 104, 32, 92, 58, wifiLevel());
+    gauge(g, 104, 33, 92, 56, wifiLevel());
     trefoil(g, 207, 66, 4);
 
     // ---- destination row: HOUR MIN SEC YEAR -------------------------------
@@ -509,10 +509,10 @@ static int faceDirty(const struct tm &t, float, const struct tm &pt, float,
     // are static, apart from the two that swap wording (SUNRISE/SUNSET and
     // TEMP/WX ERR), which are covered below.
     int n = 0;
-    if (max > 0) out[n++] = { 46, 32, 54, 58 };            // the capacitor
+    if (max > 0) out[n++] = { 48, 36, 54, 50 };            // the capacitor
     if (t.tm_sec != pt.tm_sec) {
         const DirtyRect perSecond[] = {
-            { 104,  32,  92, 58 },   // gauge - the needle tracks signal strength
+            { 104,  33,  92, 56 },   // gauge - the needle tracks signal strength
             {  65, 108, 110, 24 },   // HOUR MIN SEC wells
             {  29, 150, 182, 24 },   // WEEK DAY MONTH YEAR wells
             // x is the left edge here, while tab() above takes a centre -
