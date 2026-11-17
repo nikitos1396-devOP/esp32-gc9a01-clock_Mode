@@ -46,7 +46,7 @@ struct Pt { int16_t x, y; };
 // top sitting inside a band of dead case. The divider slope is unchanged.
 static const Pt POLY_TEMP[4] = { {  0,   0}, {145,   0}, {130,  72}, {  0,  72} };
 static const Pt POLY_DATE[4] = { {153,   0}, {240,   0}, {236,  72}, {138,  72} };
-static const Pt POLY_SEC [4] = { { 16,  76}, {240,  76}, {232, 108}, {  4, 108} };
+static const Pt POLY_SEC [4] = { { -8,  76}, {240,  76}, {232, 108}, {-20, 108} };
 static const Pt POLY_TIME[4] = { {  0, 112}, {240, 112}, {232, 182}, {  4, 182} };
 // Bottom row: the divider leans the opposite way to the TEMP/DATE one above,
 // so the two splits mirror each other across the face. That makes the
@@ -415,7 +415,7 @@ static void seg7PairC(GFX &g, int cx, int y, int w, int h, int t, int gap,
 #define RU_P  0x0037   // П
 #define RU_O  0x003F   // О
 #define RU_N  0x00F6   // Н
-#define RU_V  0x128F   // В
+#define RU_V  0x00FF   // В (как «8»)
 #define RU_T  0x1201   // Т
 #define RU_S  0x0039   // С
 #define RU_R  0x00F3   // Р
