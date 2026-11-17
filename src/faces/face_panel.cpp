@@ -172,6 +172,15 @@ static void signalBars(GFX &g, int x, int y, int pct)
     }
 }
 
+// Знак процента 6x8 px, нарисованный линиями: не зависит от шрифта.
+template <typename GFX>
+static void pctGlyph(GFX &g, int x, int y, uint16_t c)
+{
+    g.drawRect(x,     y,     3, 3, c);   // верхний кружок
+    g.drawRect(x + 3, y + 5, 3, 3, c);   // нижний кружок
+    g.drawLine(x + 5, y, x, y + 7, c);   // косая черта
+}
+
 template <typename GFX>
 static void bell(GFX &g, int x, int y, uint16_t c)
 {
@@ -180,24 +189,27 @@ static void bell(GFX &g, int x, int y, uint16_t c)
     g.fillRect(x - 1, y + 5, 3, 2, c);
 }
 
-// Moon on the dark ground between the panels. Eight phases, drawn from
-// discs: the crescents and gibbous shapes are a lit disc with a dark disc
-// pushed across it.
+// Луна: освещённая часть заливается построчно строго внутри диска, поэтому
+// за кольцо ничего не выходит. 0 = новолуние, 4 = полнолуние.
 template <typename GFX>
 static void moon(GFX &g, int cx, int cy, int r, int phase8)
 {
+    // cos(2*pi*p) * 100 для p = 0, 1/8 ... 7/8: положение терминатора
+    static const int8_t K[8] = { 100, 71, 0, -71, -100, -71, 0, 71 };
+
     g.fillCircle(cx, cy, r + 3, C_MOON_DK);
     g.drawCircle(cx, cy, r + 3, C_FRAME);
-    if (phase8 == 0) { g.fillCircle(cx, cy, r, 0x4208); return; }     // new
-    g.fillCircle(cx, cy, r, C_MOON);
-    switch (phase8) {
-        case 1: g.fillCircle(cx - r / 2, cy, r, C_MOON_DK); break;         // waxing crescent
-        case 2: g.fillRect(cx - r - 1, cy - r - 1, r + 1, 2 * r + 3, C_MOON_DK); break;   // first quarter
-        case 3: g.fillCircle(cx - r - r / 2, cy, r, C_MOON_DK); break;     // waxing gibbous
-        case 4: break;                                                     // full
-        case 5: g.fillCircle(cx + r + r / 2, cy, r, C_MOON_DK); break;     // waning gibbous
-        case 6: g.fillRect(cx + 1, cy - r - 1, r + 1, 2 * r + 3, C_MOON_DK); break;      // last quarter
-        case 7: g.fillCircle(cx + r / 2, cy, r, C_MOON_DK); break;         // waning crescent
+    g.drawCircle(cx, cy, r, 0x3186);
+    if (phase8 == 0) { g.fillCircle(cx, cy, r, 0x4208); return; }     // новолуние
+
+    const bool waxing = phase8 <= 4;          // растущая: свет справа
+    for (int dy = -r; dy <= r; dy++) {
+        int hw = (int)(sqrtf((float)(r * r - dy * dy)) + 0.5f);
+        if (hw <= 0) continue;
+        int tx = hw * K[phase8] / 100;        // где проходит граница света
+        int x0 = waxing ? cx + tx : cx - hw;
+        int x1 = waxing ? cx + hw : cx - tx;
+        if (x1 >= x0) g.drawFastHLine(x0, cy + dy, x1 - x0 + 1, C_MOON);
     }
 }
 
@@ -308,18 +320,12 @@ static void render(GFX &g, const struct tm &t, float)
     signalBars(g, 40, 97, sig);
     snprintf(buf, sizeof buf, "%d", sig);
     {
-        // При 100% цифры мельче, а вся группа «число + %» центрируется
-        // по реальной ширине знака процента в шрифте.
         const bool big = sig >= 100;
-        const int  dw = big ? 6 : 8, dh = big ? 10 : 12, dt = 2, dg = big ? 1 : 2;
-        const int  dy = big ? 102 : 101;
-        int w  = segWidth(buf, dw, dt, dg);
-        int pw = g.textWidth("%");
-        int x  = 30 + (38 - (w + 2 + pw)) / 2;
-        segText(g, buf, x, dy, dw, dh, dt, dg);
-        g.setTextDatum(TL_DATUM);
-        g.setTextColor(C_INK, P_COL);
-        g.drawString("%", x + w + 2, 99);
+        const int  dw = big ? 7 : 8, dg = big ? 1 : 2, dh = 12, dt = 2;
+        int w = segWidth(buf, dw, dt, dg);
+        int x = 30 + (38 - (w + 3 + 6)) / 2;     // число + зазор 3 + знак 6
+        segText(g, buf, x, 101, dw, dh, dt, dg);
+        pctGlyph(g, x + w + 3, 103, C_INK);
     }
 
     panel(g, 72, 84, 40, 34);
