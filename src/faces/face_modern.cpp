@@ -15,6 +15,8 @@
 // ---------------------------------------------------------------------------
 #include "../face.h"
 #include <ctype.h>
+extern const uint8_t FontRu[];
+extern const uint8_t FontRuSmall[];
 
 namespace face_modern {
 
@@ -130,15 +132,16 @@ static void drawDate(GFX &g, const struct tm &t)
     g.fillRoundRect(x, y, DATE_S, DATE_S, 8, C_SUB);
     g.drawRoundRect(x, y, DATE_S, DATE_S, 8, C_SUB_RING);
 
-    char wd[8];
-    strftime(wd, sizeof(wd), "%a", &t);
-    for (char *p = wd; *p; p++) *p = toupper((unsigned char)*p);
+    static const char *WD[7] = { "ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ" };
 
+    g.loadFont(FontRuSmall);
     g.setTextDatum(TC_DATUM);
     g.setTextColor(C_ACCENT, C_SUB);
-    g.drawString(wd, DATE_CX, y + 3, 1);
+    g.drawString(WD[t.tm_wday % 7], DATE_CX, y + 1);
+    g.unloadFont();                       // до drawNumber, иначе число нарисуется тем же шрифтом
+
     g.setTextColor(C_TEXT, C_SUB);
-    g.drawNumber(t.tm_mday, DATE_CX, y + 12, 4);
+    g.drawNumber(t.tm_mday, DATE_CX, y + 14, 4);
 }
 
 template <typename GFX>
