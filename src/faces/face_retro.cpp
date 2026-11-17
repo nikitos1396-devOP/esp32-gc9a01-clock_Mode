@@ -115,7 +115,6 @@ static const char *MONS[12] = { "ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ"
 
 // ---- the face -------------------------------------------------------------
 template <typename GFX>
-template <typename GFX>
 static void render(GFX &g, const struct tm &t, float subSec)
 {
     textSmooth(g, false);
