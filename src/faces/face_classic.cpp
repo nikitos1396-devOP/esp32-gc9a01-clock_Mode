@@ -154,7 +154,7 @@ static void drawDial(GFX &g)
         if (n == 3 || n == 6) continue;
         // Font 9, drawn natively - see the default face. A dress dial lives
         // or dies on its numerals, so they are the type worth the flash.
-        g.drawString(ROMAN[n - 1], numPos[i].x, numPos[i].y, 9);
+        g.drawString(ROMAN[n - 1], numPos[i].x, numPos[i].y, 4);
     }
 }
 
