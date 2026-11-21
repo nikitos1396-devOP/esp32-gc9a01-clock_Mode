@@ -235,7 +235,7 @@ inline const char *wxName(WxIcon ic)
     switch (ic) {
         case WX_CLEAR:  return "ЯСНО";
         case WX_PARTLY: return "ПЕРЕМ.";
-        case WX_CLOUD:  return "ПАСМУРНО";
+        case WX_CLOUD:  return "ПАСМУРН";
         case WX_FOG:    return "ТУМАН";
         case WX_RAIN:   return "ДОЖДЬ";
         case WX_SNOW:   return "СНЕГ";
