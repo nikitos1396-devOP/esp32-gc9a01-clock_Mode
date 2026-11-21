@@ -20,15 +20,26 @@ jobs:
         run: pip install -U platformio
 
       - name: Build firmware
-        run: pio run
+        run: |
+          pio run -e c3_clock
+          pio run -e c3_clock_delorean
         env:
-          OWM_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+          OWM_KEY: ${{ secrets.OWM_KEY }}
 
-      - name: Upload firmware artifact
+      - name: Upload firmware (стандартная)
         uses: actions/upload-artifact@v4
         with:
           name: esp32c3-clock-firmware
           path: |
-            .pio/build/*/firmware.bin
-            .pio/build/*/bootloader.bin
-            .pio/build/*/partitions.bin
+            .pio/build/c3_clock/firmware.bin
+            .pio/build/c3_clock/bootloader.bin
+            .pio/build/c3_clock/partitions.bin
+
+      - name: Upload firmware (с DeLorean)
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32c3-clock-firmware-delorean
+          path: |
+            .pio/build/c3_clock_delorean/firmware.bin
+            .pio/build/c3_clock_delorean/bootloader.bin
+            .pio/build/c3_clock_delorean/partitions.bin
