@@ -199,6 +199,8 @@ static String urlEncode(const String &s)
     return o;
 }
 
+static volatile int geoCode = 0;
+
 // Геокодер OpenWeatherMap: тот же ключ, что и для погоды, понимает кириллицу.
 static bool resolveLocation()
 {
@@ -215,7 +217,9 @@ static bool resolveLocation()
     if (!http.begin(client, url)) return false;
 
     bool ok = false;
-    if (http.GET() == HTTP_CODE_OK) {
+    int code = http.GET();
+    geoCode = code;
+    if (code == HTTP_CODE_OK) {
         JsonDocument filter;
         JsonObject f = filter[0].to<JsonObject>();
         f["lat"] = true; f["lon"] = true; f["name"] = true; f["country"] = true;
@@ -279,7 +283,8 @@ static void weatherTask(void *)
         if (WiFi.status() != WL_CONNECTED) {
             wxErr = 1;
         } else if (!settings.hasLoc && !resolveLocation()) {
-            wxErr = 6;                                    // location not found
+            wxErr = (geoCode < 0) ? 900 - geoCode
+                  : (geoCode != 200 && geoCode != 0) ? geoCode : 6;
         } else {
             wxUseF = settings.useF;
 
