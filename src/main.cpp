@@ -68,7 +68,7 @@ static const char *CFG_TZ = nullptr;
 #endif
 
 // Weather: Open-Meteo, which needs no API key.
-static const uint32_t WX_PERIOD_MS = 10UL * 60UL * 1000UL;  // refresh every 10 min
+static const uint32_t WX_PERIOD_MS = 30UL * 60UL * 1000UL;  // refresh every 10 min
 static const uint32_t WX_RETRY_MS  = 30UL * 1000UL;         // sooner after a failure
 
 // How long the network can be gone before the setup hotspot reopens.
