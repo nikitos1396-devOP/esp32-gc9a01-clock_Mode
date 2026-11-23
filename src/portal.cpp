@@ -30,7 +30,6 @@ button{margin-top:22px;width:100%;padding:12px;border:0;border-radius:8px;backgr
 <label>Или введите название сети</label><input type=text name=other autocapitalize=none autocorrect=off>
 <label>Пароль</label><input type=password name=pass placeholder="%PASSPH%">
 <label>Введите город для получения погоды. Попробуйте на английском, если город найден не верно.</label><input type=text name=loc value="%LOC%" placeholder="Например Москва или Barnaul">
-<label>Температура</label><div class=u><label><input type=radio name=units value=f %FCHK%> &deg;F</label><label><input type=radio name=units value=c %CCHK%> &deg;C</label></div>
 <button>Сохранить и подключиться</button></form>
 <p style="margin-top:18px"><a href=/scan>Обновить список сетей</a></p>
 </body></html>)HTML";
@@ -103,8 +102,6 @@ static void sendPage()
     html.replace("%OPTIONS%", opts);
     html.replace("%PASSPH%", settings.pass.length() ? "оставьте пустым, чтобы не менять" : "");
     html.replace("%LOC%", htmlEscape(settings.locQuery));
-    html.replace("%FCHK%", settings.useF ? "checked" : "");
-    html.replace("%CCHK%", settings.useF ? "" : "checked");
     server.send(200, "text/html", html);
 }
 
@@ -135,7 +132,7 @@ static void handleSave()
         settings.tzName   = "";
         settings.hasOffset = false;
     }
-    settings.useF = server.arg("units") != "c";
+    settings.useF = false;
     settingsSave();
 
     // Try it with the hotspot still up, so the phone can be told the result.
