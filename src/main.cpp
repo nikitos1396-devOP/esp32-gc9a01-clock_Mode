@@ -305,7 +305,7 @@ static void weatherTask(void *)
             } else {
                 int httpCode = http.GET();
                 if (httpCode != HTTP_CODE_OK) {
-                    wxErr = 3;
+                    wxErr = (httpCode < 0) ? 800 - httpCode : httpCode;
                 } else {
                     JsonDocument filter;
                     filter["main"]["temp"]        = true;
