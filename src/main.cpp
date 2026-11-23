@@ -59,7 +59,7 @@
 #define WX_LOCATION ""
 #endif
 #ifndef WX_UNITS
-#define WX_UNITS "fahrenheit"
+#define WX_UNITS "celsius"
 #endif
 #ifdef TZ_INFO
 static const char *CFG_TZ = TZ_INFO;
@@ -172,7 +172,7 @@ volatile bool wxIsDay = true;
 volatile int  wxErr   = 0;    // 0 ok, else the stage that failed (shown on the face)
 volatile int  wxSunrise = -1; // minutes since local midnight, -1 = unknown
 volatile int  wxSunset  = -1;
-bool          wxUseF    = true;
+bool          wxUseF    = false;
 
 // "2026-09-01T07:04" -> minutes since midnight, or -1 if it does not parse.
 static int isoToMinutes(const char *iso)
@@ -504,6 +504,8 @@ static void seedDefaults()
         settings.useF = strcmp(WX_UNITS, "celsius") != 0;
     }
 }
+
+settings.useF = false;            // только Цельсий
 
 // Switch to a face: clear the panel (faces do not all paint every pixel, so
 // the old one would show through in the margins) and force a repaint.
