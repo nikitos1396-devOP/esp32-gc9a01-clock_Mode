@@ -505,8 +505,6 @@ static void seedDefaults()
     }
 }
 
-settings.useF = false;            // только Цельсий
-
 // Switch to a face: clear the panel (faces do not all paint every pixel, so
 // the old one would show through in the margins) and force a repaint.
 static void showFace(int idx)
@@ -662,6 +660,7 @@ void setup()
     settingsLoad();
     bool startOver = bootHeld();
     if (startOver) seedDefaults();
+    settings.useF = false;            // только Цельсий
 
     WiFi.mode(WIFI_STA);
     WiFi.setTxPower(WIFI_POWER_8_5dBm);
