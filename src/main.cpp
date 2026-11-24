@@ -201,6 +201,28 @@ static String urlEncode(const String &s)
 
 static volatile int geoCode = 0;
 
+// GET с нарастающим таймаутом: 10, 20, 30 секунд. При ответе сервера
+// возвращает HTTP-код, а http остаётся открытым: тело читает вызывающий.
+// Если все попытки неудачны, возвращает отрицательный код последней,
+// -100 означает, что запрос не удалось даже начать.
+static int httpGetEscalating(HTTPClient &http, WiFiClient &client, const String &url)
+{
+    static const uint32_t TO[3] = { 10000, 20000, 30000 };
+    int code = -1;
+    for (int i = 0; i < 3; i++) {
+        http.useHTTP10(true);
+        http.setConnectTimeout(TO[i]);
+        http.setTimeout(TO[i]);
+        if (!http.begin(client, url)) return -100;
+        code = http.GET();
+        if (code > 0) return code;            // сервер ответил (любой код)
+        http.end();
+        client.stop();
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+    return code;
+}
+
 // Геокодер OpenWeatherMap: тот же ключ, что и для погоды, понимает кириллицу.
 static bool resolveLocation()
 {
@@ -211,14 +233,10 @@ static bool resolveLocation()
                + OWM_KEY + "&q=" + urlEncode(settings.locQuery);
     WiFiClient client;
     HTTPClient http;
-    http.useHTTP10(true);
-    http.setConnectTimeout(8000);
-    http.setTimeout(8000);
-    if (!http.begin(client, url)) return false;
-
-    bool ok = false;
-    int code = http.GET();
+    int code = httpGetEscalating(http, client, url);
     geoCode = code;
+    
+    bool ok = false;
     if (code == HTTP_CODE_OK) {
         JsonDocument filter;
         JsonObject f = filter[0].to<JsonObject>();
@@ -296,11 +314,8 @@ static void weatherTask(void *)
 
             WiFiClient client;
             HTTPClient http;
-            http.useHTTP10(true);
-            http.setConnectTimeout(8000);
-            http.setTimeout(8000);
-
-            if (!http.begin(client, url)) {
+            int httpCode = httpGetEscalating(http, client, url);
+            if (httpCode == -100) {
                 wxErr = 2;
             } else {
                 int httpCode = http.GET();
