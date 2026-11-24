@@ -23,6 +23,7 @@
 #include "font_ru.h"
 #include "font_ru_small.h"
 #include <Preferences.h>
+#include "esp_task_wdt.h"
 #ifdef AMOLED_C6
 #include "c6/touch.h"
 #include "c6/audio.h"
@@ -297,6 +298,7 @@ static void weatherTask(void *)
     for (;;) {
         bool ok = false;
         diagWx++;
+static uint32_t wxLastOk = 0;     // время последней удачной загрузки погоды
 
         if (WiFi.status() != WL_CONNECTED) {
             wxErr = 1;
@@ -381,6 +383,21 @@ static void weatherTask(void *)
         }
         Serial.printf("WX: err=%d, hasLoc=%d, lat=%.4f, lon=%.4f\n",
                       wxErr, settings.hasLoc, settings.lat, settings.lon);
+        if (ok) {
+            wxLastOk = millis();
+        } else if (WiFi.status() == WL_CONNECTED && (wxErr == 2 || wxErr >= 800)) {
+            // Wi-Fi есть, а запросы не идут: сначала переподключение (раз в
+            // полчаса), потом, если за два часа ничего не изменилось, перезагрузка.
+            static uint32_t lastRc = 0;
+            uint32_t down = millis() - wxLastOk;      // wxLastOk == 0: с самого запуска
+            if (down > 2UL * 3600000UL) ESP.restart();
+            else if (down > 1800000UL && millis() - lastRc > 1800000UL) {
+                lastRc = millis();
+                WiFi.reconnect();
+            }
+        }
+        // Данные старше часа не показываем: лучше «--», чем вчерашний прогноз.
+        if (wxValid && millis() - wxLastOk > 3600000UL) wxValid = false;
         vTaskDelay(pdMS_TO_TICKS(ok ? WX_PERIOD_MS : WX_RETRY_MS));
     }
 }
@@ -483,6 +500,12 @@ static void runPortalUntilConnected()
         if (s != shown) { shown = s; drawSetupScreen(portalStatusText(s)); }
         // leave the hotspot up a few seconds so the phone can read "connected"
         if (s == portal::OK && portal::sinceState() > 4000) { portal::stop(); return; }
+                // Сохранённая сеть поднялась сама (роутер просто грузился дольше
+        // часов): страница настройки больше не нужна.
+        if (s == portal::IDLE && WiFi.status() == WL_CONNECTED) {
+            portal::stop();
+            return;
+        }
         delay(10);
     }
 }
@@ -732,6 +755,8 @@ void setup()
     // read as a stall.
     supervisor::begin();
 #endif
+    esp_task_wdt_init(60, true);   // 60 с без отклика loop(): перезагрузка
+    esp_task_wdt_add(NULL);
 }
 
 // ---- freeze diagnostics ----------------------------------------------------
@@ -774,6 +799,9 @@ void loop()
     time_t   now = tv.tv_sec;
     struct tm t;
     localtime_r(&now, &t);
+        // Ночная перезагрузка (не чаще раза в час работы, чтобы не зациклиться).
+    if (timeValid && t.tm_hour == 4 && t.tm_min == 0 && millis() > 3600000UL)
+        ESP.restart();
 
     SUP(P_PORTAL);
     portal::handle();
@@ -940,6 +968,7 @@ void loop()
 
     SUP(P_IDLE);
     SUP_ALIVE();
+    esp_task_wdt_reset();
 
     // Frame rate is bounded by the panel transfer, not by this delay.
     delay(5);
