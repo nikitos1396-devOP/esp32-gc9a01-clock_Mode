@@ -701,7 +701,7 @@ void setup()
     settings.useF = false;            // только Цельсий
 
     WiFi.mode(WIFI_STA);
-    WiFi.setTxPower(WIFI_POWER_8_5dBm);
+    WiFi.setTxPower(WIFI_POWER_11dBm);
     WiFi.setSleep(false);
     WiFi.setAutoReconnect(true);
 
